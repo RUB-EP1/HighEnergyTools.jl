@@ -12,7 +12,7 @@ It's not a registered package. To install it, you can use the following command:
 
 ```julia
 using Pkg
-Pkg.add(PackageSpec(url="https://github.com/mmikhasenko/HighEnergyTools.jl.git"))
+Pkg.add(PackageSpec(url="https://github.com/RUB-EP1/HighEnergyTools.jl.git"))
 #
 using HighEnergyTools
 ```
