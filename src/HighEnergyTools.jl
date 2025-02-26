@@ -1,4 +1,4 @@
-module DataAnalysisWS2425
+module HighEnergyTools
 
 using QuadGK, Parameters
 using Random, Statistics
@@ -30,4 +30,4 @@ include("utils.jl")
 export WithData, curvehistpulls
 include("plotting_recipe.jl")
 
-end # module DataAnalysisWS2425
+end # module HighEnergyTools

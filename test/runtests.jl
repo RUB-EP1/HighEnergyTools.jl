@@ -1,5 +1,5 @@
 using Test
-using DataAnalysisWS2425
+using HighEnergyTools
 
 include("test-distributions.jl")
 include("test-sampling.jl")

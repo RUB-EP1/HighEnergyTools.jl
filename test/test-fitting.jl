@@ -1,5 +1,5 @@
 using Test
-using DataAnalysisWS2425
+using HighEnergyTools
 using Random
 
 @testset "Simple fitting" begin

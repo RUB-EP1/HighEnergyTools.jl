@@ -1,6 +1,6 @@
 using Test
-using DataAnalysisWS2425
-using DataAnalysisWS2425.Random
+using HighEnergyTools
+using HighEnergyTools.Random
 
 @testset "Rejection sampling" begin
     Random.seed!(1234)

@@ -1,5 +1,5 @@
 using Test
-using DataAnalysisWS2425
+using HighEnergyTools
 
 # test the implementation of gaussian_scaled
 @testset "gaussian" begin

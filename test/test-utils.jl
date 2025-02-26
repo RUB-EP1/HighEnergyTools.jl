@@ -1,5 +1,5 @@
 using Test
-using DataAnalysisWS2425
+using HighEnergyTools
 
 @testset "Find zeros" begin
     xv = -0.0020005274189482786:0.00044456164865517303:0.0020005274189482786

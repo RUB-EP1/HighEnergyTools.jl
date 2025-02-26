@@ -1,4 +1,4 @@
-using DataAnalysisWS2425
+using HighEnergyTools
 using Test
 
 @testset "Anka" begin

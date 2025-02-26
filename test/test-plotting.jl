@@ -1,6 +1,6 @@
 using Test
-using DataAnalysisWS2425
-using DataAnalysisWS2425.FHist
+using HighEnergyTools
+using HighEnergyTools.FHist
 
 data = randn(1000)
 h = Hist1D(data; binedges = range(-5, 5, 101))

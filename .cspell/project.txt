@@ -1,5 +1,3 @@
-ankamod
-Asymptotics
 backgr
 Breit
 coeffs
@@ -10,8 +8,6 @@ Dhruvanshu
 docstrings
 ENLL
 extnll
-Frida
-fridamod
 Higgs
 histogramming
 julia
@@ -22,14 +18,12 @@ mycdf
 mypdf
 nbins
 Neyman
-Parmar
 pdglive
 pmatrix
 pseudodata
 pseudoexperiments
 pvalue
 quantiles
-Stahl
 unbinned
 Voigt
 σhat
@@ -37,5 +31,4 @@ Wilks
 SUSY
 DOCA
 OWNPVIPCHI2
-moodle
 hyperparameters
