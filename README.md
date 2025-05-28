@@ -20,4 +20,5 @@ using HighEnergyTools
 ## Related packages
 
 - [Distributions.jl](https://github.com/JuliaStats/Distributions.jl)
+- [NumericalDistributions.jl](https://github.com/mmikhasenko/NumericalDistributions.jl)
 - [AlgebraPDF.jl](https://github.com/mmikhasenko/AlgebraPDF.jl)
