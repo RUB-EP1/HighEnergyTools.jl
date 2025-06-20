@@ -4,6 +4,8 @@ using QuadGK, Parameters
 using Random, Statistics
 using FHist
 using Optim
+using Distributions
+using LinearAlgebra
 #
 using Plots, RecipesBase
 using Plots.PlotMeasures: mm
@@ -29,5 +31,8 @@ include("utils.jl")
 
 export WithData, curvehistpulls
 include("plotting_recipe.jl")
+
+export Wmatrix, sWeights
+include("sweights.jl")
 
 end # module HighEnergyTools
