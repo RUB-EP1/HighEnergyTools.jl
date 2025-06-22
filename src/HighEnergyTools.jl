@@ -1,7 +1,11 @@
 module HighEnergyTools
 
-using QuadGK, Parameters
-using Random, Statistics
+using NumericalDistributions
+using Distributions
+using Parameters
+using Statistics
+using QuadGK
+using Random
 using FHist
 using Optim
 #
