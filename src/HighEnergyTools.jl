@@ -23,9 +23,7 @@ export fit_enll, extended_nll
 include("fitting.jl")
 
 export Anka, Frida
-export peak1_func, peak2_func
-export background_func
-export total_func
+export build_model
 include("models.jl")
 
 export find_zero_two_sides
