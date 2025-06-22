@@ -1,12 +1,14 @@
 using HighEnergyTools
+using Distributions
+using DistributionsHEP
 using Test
 
 @testset "Chebyshev" begin
-    a = scalled_chebyshev([1, 1], (-1, 1))
+    a = HighEnergyTools.scaled_chebyshev([1, 1], (-1, 1))
     @test pdf(a, -1) ≈ 0.0
     @test pdf(a, 1) ≈ 1.0
 
-    b = scalled_chebyshev([1, 1], (3.0, 7.0))
+    b = HighEnergyTools.scaled_chebyshev([1, 1], (3.0, 7.0))
     @test pdf(b, 3.0) ≈ 0.0
     @test pdf(b, 7.0) ≈ 0.5
 end

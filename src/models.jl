@@ -71,7 +71,12 @@ Create a scaled Chebyshev polynomial distribution over the specified support int
 # Returns
 - `LocationScale`: A scaled Chebyshev distribution
 """
-scaled_chebyshev(coeffs, support) = LocationScale((support[2] + support[1]) / 2, (support[2] - support[1]) / 2, Chebyshev(coeffs, -1, 1))
+function scaled_chebyshev(coeffs, support)
+    shift = (support[2] + support[1]) / 2
+    scale = (support[2] - support[1]) / 2
+    cheb = Chebyshev(coeffs, -1, 1)
+    return cheb * scale + shift
+end
 
 """
     build_model(m::Anka, pars)

@@ -13,6 +13,9 @@ using Optim
 using Plots, RecipesBase
 using Plots.PlotMeasures: mm
 
+import Distributions: pdf
+export pdf
+
 export gaussian_scaled, polynomial_scaled, breit_wigner_scaled, voigt_scaled
 include("functions.jl")
 
@@ -20,6 +23,7 @@ export sample_rejection, sample_inversion
 include("sampling.jl")
 
 export fit_enll, extended_nll
+export nll, fit_nll
 include("fitting.jl")
 
 export Anka, Frida

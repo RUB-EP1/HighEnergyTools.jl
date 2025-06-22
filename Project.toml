@@ -4,6 +4,7 @@ authors = ["Mikhail Mikhasenko <mikhail.mikhasenko@cern.ch>", "Marian Stahl <mar
 version = "0.4.0"
 
 [deps]
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DistributionsHEP = "0d0d6f60-fb7b-48ca-90bb-e14e8b1655a7"
@@ -26,6 +27,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 XGBoost = "009559a3-9522-5dbb-924b-0b6ed2b22bb9"
 
 [compat]
+ComponentArrays = "0.15.28"
 Distributions = "0.25.120"
 DistributionsHEP = "0.1.0"
 FHist = ">= 0.11"
