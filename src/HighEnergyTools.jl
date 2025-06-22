@@ -1,6 +1,7 @@
 module HighEnergyTools
 
 using NumericalDistributions
+using DistributionsHEP
 using Distributions
 using Parameters
 using Statistics
