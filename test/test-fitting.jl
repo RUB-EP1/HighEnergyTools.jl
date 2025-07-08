@@ -10,7 +10,7 @@ using FHist
     χ² = chi2(h, d)
     @test χ² ≥ 0
     #
-    model(x) = pdf(d, x) * integral(h; width = true)
+    model(x) = pdf(d, x) * FHist.integral(h; width = true)
     χ²2 = chi2(h, model)
     @test isapprox(χ², χ²2; atol = 1e-8)
     # Test with zero-count bins

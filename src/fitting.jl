@@ -176,7 +176,7 @@ chi2(h, d)
 ```
 """
 function chi2(h, d::UnivariateDistribution)
-    scale = integral(h; width = true)
+    scale = FHist.integral(h; width = true)
     f(x) = pdf(d, x) * scale
     chi2(h, f)
 end
