@@ -20,7 +20,7 @@ f(x) = 0.5*dS(x) + 0.5*dB(x)
 W = Wmatrix(dS, dB, f, (-5, 10))
 ```
 """
-function Wmatrix(dS, dB, f, lims::Tuple{<:Real,<:Real})
+function Wmatrix(dS, dB, f, lims::Tuple{<:Real, <:Real})
     comps = [dS, dB]
     ϵ = 1e-12  # Small threshold to avoid division by zero
     W = [quadgk(x -> di(x) * dj(x) / max(f(x), ϵ), lims...)[1] for di in comps, dj in comps]
@@ -28,14 +28,14 @@ function Wmatrix(dS, dB, f, lims::Tuple{<:Real,<:Real})
 end
 
 """
-    Wmatrix(pdfS::MixtureModel, pdfB::MixtureModel, f::Function)
+    Wmatrix(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, f::Function)
 
-Computes the 2×2 sWeight matrix using signal and background `MixtureModel`s
+Computes the 2×2 sWeight matrix using signal and background `UnivariateDistribution`s
 from `Distributions.jl` and a total PDF function `f(x)`.
 
 # Arguments
-- `pdfS`: Signal model, a `MixtureModel` (e.g., `MixtureModel([Normal(...)], [weight])`).
-- `pdfB`: Background model, also a `MixtureModel`.
+- `pdfS`: Signal model, a `UnivariateDistribution` (e.g., `Normal(0, 1)`).
+- `pdfB`: Background model, also a `UnivariateDistribution`.
 - `f`: Total PDF as a function (e.g., `x -> f_signal * pdf(pdfS, x) + (1 - f_signal) * pdf(pdfB, x)`)
 
 # Returns
@@ -43,14 +43,14 @@ from `Distributions.jl` and a total PDF function `f(x)`.
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 f(x) = 0.4 * pdf(pdfS, x) + 0.6 * pdf(pdfB, x)
 
 W = Wmatrix(pdfS, pdfB, f)
 ```
 """
-function Wmatrix(pdfS::MixtureModel, pdfB::MixtureModel, f::Function)
+function Wmatrix(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, f::Function)
     dS(x) = pdf(pdfS, x)
     dB(x) = pdf(pdfB, x)
     lims = support_union(pdfS, pdfB)
@@ -58,14 +58,14 @@ function Wmatrix(pdfS::MixtureModel, pdfB::MixtureModel, f::Function)
 end
 
 """
-    sWeights(pdfS::MixtureModel, pdfB::MixtureModel, fraction_signal::Real)
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
 
 Computes the sWeight functions for signal and background components
-based on mixture modeling.
+based on individual distributions.
 
 # Arguments
-- `pdfS`: Signal model as a `MixtureModel`.
-- `pdfB`: Background model as a `MixtureModel`.
+- `pdfS`: Signal model as a `UnivariateDistribution`.
+- `pdfB`: Background model as a `UnivariateDistribution`.
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
 
 # Returns
@@ -77,8 +77,8 @@ based on mixture modeling.
 ```julia
 using Distributions
 
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 f_sig = 0.4
 
 wS, wB = sWeights(pdfS, pdfB, f_sig)
@@ -86,7 +86,7 @@ println(wS(0.0))  # ≈ 1.0 (near pure signal region)
 println(wB(5.0))  # ≈ 1.0 (near pure background region)
 ```
 """
-function sWeights(pdfS::MixtureModel, pdfB::MixtureModel, fraction_signal::Real)
+function sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
     # Define combined PDF f(x) = fS * pdfS(x) + fB * pdfB(x)
     f(x) = fraction_signal * pdf(pdfS, x) + (1 - fraction_signal) * pdf(pdfB, x)
     # Compute the weight matrix
@@ -106,13 +106,13 @@ function sWeights(pdfS::MixtureModel, pdfB::MixtureModel, fraction_signal::Real)
 end
 
 """
-    sWeights(pdfS::MixtureModel, pdfB::MixtureModel, n_signal::Real, n_background::Real)
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, n_signal::Real, n_background::Real)
 
 Compute the sWeight functions for signal and background components using the absolute fitted yields.
 
 # Arguments
-- `pdfS`: Signal model as a `MixtureModel`.
-- `pdfB`: Background model as a `MixtureModel`.
+- `pdfS`: Signal model as a `UnivariateDistribution`.
+- `pdfB`: Background model as a `UnivariateDistribution`.
 - `n_signal`: Fitted number of signal events (must be non-negative).
 - `n_background`: Fitted number of background events (must be non-negative).
 
@@ -123,16 +123,16 @@ Compute the sWeight functions for signal and background components using the abs
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 nS, nB = 40, 60
 wS, wB = sWeights(pdfS, pdfB, nS, nB)
 println(wS(0.0))
 ```
 """
 function sWeights(
-    pdfS::MixtureModel,
-    pdfB::MixtureModel,
+    pdfS::UnivariateDistribution,
+    pdfB::UnivariateDistribution,
     n_signal::Real,
     n_background::Real,
 )
@@ -142,13 +142,13 @@ function sWeights(
 end
 
 """
-    sWeights_covariance(pdfS::MixtureModel, pdfB::MixtureModel, fraction_signal::Real)
+    sWeights_covariance(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
 
 Return the covariance matrix of the fitted yields as used in the sPlot formalism.
 
 # Arguments
-- `pdfS`: Signal model as a `MixtureModel`.
-- `pdfB`: Background model as a `MixtureModel`.
+- `pdfS`: Signal model as a `UnivariateDistribution`.
+- `pdfB`: Background model as a `UnivariateDistribution`.
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
 
 # Returns
@@ -156,13 +156,13 @@ Return the covariance matrix of the fitted yields as used in the sPlot formalism
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 cov = sWeights_covariance(pdfS, pdfB, 0.4)
 println(cov)
 ```
 """
-function sWeights_covariance(pdfS::MixtureModel, pdfB::MixtureModel, fraction_signal::Real)
+function sWeights_covariance(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
     f(x) = fraction_signal * pdf(pdfS, x) + (1 - fraction_signal) * pdf(pdfB, x)
     W = Wmatrix(pdfS, pdfB, f)
     return inv(W)
@@ -174,8 +174,8 @@ end
 Compute the sWeights for arrays of data points.
 
 # Arguments
-- `pdfS`: Signal model as a `MixtureModel`.
-- `pdfB`: Background model as a `MixtureModel`.
+- `pdfS`: Signal model as a `UnivariateDistribution`.
+- `pdfB`: Background model as a `UnivariateDistribution`.
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
 - `xs`: Vector of data points.
 
@@ -184,8 +184,8 @@ Compute the sWeights for arrays of data points.
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 xs = [-2.0, 0.0, 5.0, 8.0]
 ws, wb = sWeights_vector(pdfS, pdfB, 0.4, xs)
 println(ws)
@@ -227,8 +227,8 @@ end
 Compute the sWeights and their variances for arrays of data points.
 
 # Arguments
-- `pdfS`: Signal model as a `MixtureModel`.
-- `pdfB`: Background model as a `MixtureModel`.
+- `pdfS`: Signal model as a `UnivariateDistribution`.
+- `pdfB`: Background model as a `UnivariateDistribution`.
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
 - `xs`: Vector of data points.
 
@@ -242,8 +242,8 @@ where ``V`` is the covariance matrix of the yields, ``p_j(x)`` are the PDFs, and
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 xs = [-2.0, 0.0, 5.0, 8.0]
 ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
 println(ws)
@@ -272,7 +272,7 @@ function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs::Abstract
         # i = 1 for signal, 2 for background
         ps = [pS(x), pB(x)]
         v = 0.0
-        for j = 1:2, k = 1:2
+        for j ∈ 1:2, k ∈ 1:2
             v += V[i, j] * V[i, k] * ps[j] * ps[k]
         end
         return v / (f(x)^2)
@@ -294,8 +294,8 @@ Fit the mixture model (signal + background) to the data using extended NLL,
 then compute sWeights and their variances for each event.
 
 # Arguments
-- `pdfS`: Signal MixtureModel (shape fixed).
-- `pdfB`: Background MixtureModel (shape fixed).
+- `pdfS`: Signal UnivariateDistribution (shape fixed).
+- `pdfB`: Background UnivariateDistribution (shape fixed).
 - `data`: Vector of data points.
 - `support`: Optional tuple for fit range. Defaults to extrema(data).
 - `init_fsig`: Initial guess for signal fraction.
@@ -309,8 +309,8 @@ then compute sWeights and their variances for each event.
 
 # Example
 ```julia
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 data = vcat(rand(pdfS, 40), rand(pdfB, 60))
 result, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
 ```
@@ -333,7 +333,7 @@ function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
     # Fit using extended NLL
     result = fit_enll(model, init_pars, data; support = support)
 
-    nS, nB = Optim.minimizer(result) |> Tuple{Float64,Float64}
+    nS, nB = Optim.minimizer(result) |> Tuple{Float64, Float64}
 
     # Redefine the NLL objective for Hessian calculation
     nll(p) = extended_nll(model, p, data; support = support)
@@ -355,7 +355,7 @@ end
 Return a DataFrame with data, sWeights, and variances for each event.
 
 # Arguments
-- `pdfS`, `pdfB`: Signal and background MixtureModels.
+- `pdfS`, `pdfB`: Signal and background UnivariateDistributions.
 - `fraction_signal`: Estimated signal fraction.
 - `xs`: Vector of data points.
 
@@ -365,8 +365,8 @@ Return a DataFrame with data, sWeights, and variances for each event.
 # Example
 ```julia
 using DataFrames
-pdfS = MixtureModel([Normal(0, 1)], [1.0])
-pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
 xs = [-2.0, 0.0, 5.0, 8.0]
 df = sWeights_dataframe(pdfS, pdfB, 0.4, xs)
 ```

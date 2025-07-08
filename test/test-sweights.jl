@@ -15,9 +15,9 @@ using Test
     @test all(diag(W) .> 0)
 end
 
-@testset "Wmatrix with MixtureModels" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1)], [1.0])
+@testset "Wmatrix with UnivariateDistributions" begin
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1)
     f(x) = 0.3 * pdf(pdfS, x) + 0.7 * pdf(pdfB, x)
     W1 = Wmatrix(pdfS, pdfB, f)
     dS(x) = pdf(pdfS, x)
@@ -30,8 +30,8 @@ end
 end
 
 @testset "sWeights basic properties" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1)], [1.0])
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1)
     f_sig = 0.4
     wS, wB = sWeights(pdfS, pdfB, f_sig)
     # Near pure signal region
@@ -51,8 +51,8 @@ end
 
 
 @testset "sWeights edge cases" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1)], [1.0])
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1)
     tol = 0.02
     # All signal
     wS, wB = sWeights(pdfS, pdfB, 1.0)
@@ -63,19 +63,19 @@ end
     @test all(isapprox(wS(x), 0.0; atol = tol) for x ∈ 3.0:1.0:7.0)
     @test all(isapprox(wB(x), 1.0; atol = tol) for x ∈ 3.0:1.0:7.0)
     # Overlapping distributions
-    pdfS2 = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB2 = MixtureModel([Normal(0.5, 1)], [1.0])
+    pdfS2 = Normal(0, 1)
+    pdfB2 = Normal(0.5, 1)
     wS, wB = sWeights(pdfS2, pdfB2, 0.5)
     @test all(isapprox(wS(x) + wB(x), 1.0; atol = 1e-8) for x ∈ -2.0:0.5:2.0)
 end
 
 @testset "sWeights features" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1.5)
     nS, nB = 40, 60
     xs = [-2.0, 0.0, 5.0, 8.0]
 
-    # Test sWeights for yildsyields
+    # Test sWeights for yields
     wS, wB = sWeights(pdfS, pdfB, nS, nB)
     @test isapprox(wS(0.0), 1.0; atol = 0.1)
     @test isapprox(wB(5.0), 1.0; atol = 0.1)
@@ -98,8 +98,8 @@ end
 end
 
 @testset "sWeights_vector_with_variance" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1.5)
     xs = [-2.0, 0.0, 5.0, 8.0]
     ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
     @test length(ws) == length(xs)
@@ -112,8 +112,8 @@ end
 end
 
 @testset "fit_and_sWeights" begin
-    pdfS = MixtureModel([Normal(0, 1)], [1.0])
-    pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1.5)
     data = vcat(rand(pdfS, 40), rand(pdfB, 60))
     result, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
     # @test abs(nS + nB - length(data)) < 1.0
