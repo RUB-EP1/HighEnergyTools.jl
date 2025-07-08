@@ -20,13 +20,10 @@ f(x) = 0.5*dS(x) + 0.5*dB(x)
 W = Wmatrix(dS, dB, f, (-5, 10))
 ```
 """
-function Wmatrix(dS, dB, f, lims::Tuple{<:Real, <:Real})
+function Wmatrix(dS, dB, f, lims::Tuple{<:Real,<:Real})
     comps = [dS, dB]
     ϵ = 1e-12  # Small threshold to avoid division by zero
-    W = [
-        quadgk(x -> di(x) * dj(x) / max(f(x), ϵ), lims...)[1]
-        for di in comps, dj in comps
-    ]
+    W = [quadgk(x -> di(x) * dj(x) / max(f(x), ϵ), lims...)[1] for di in comps, dj in comps]
     return W
 end
 
@@ -133,7 +130,12 @@ wS, wB = sWeights(pdfS, pdfB, nS, nB)
 println(wS(0.0))
 ```
 """
-function sWeights(pdfS::MixtureModel, pdfB::MixtureModel, n_signal::Real, n_background::Real)
+function sWeights(
+    pdfS::MixtureModel,
+    pdfB::MixtureModel,
+    n_signal::Real,
+    n_background::Real,
+)
     N = n_signal + n_background
     f_signal = n_signal / N
     return sWeights(pdfS, pdfB, f_signal)
@@ -270,7 +272,7 @@ function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs::Abstract
         # i = 1 for signal, 2 for background
         ps = [pS(x), pB(x)]
         v = 0.0
-        for j in 1:2, k in 1:2
+        for j = 1:2, k = 1:2
             v += V[i, j] * V[i, k] * ps[j] * ps[k]
         end
         return v / (f(x)^2)
@@ -313,7 +315,7 @@ data = vcat(rand(pdfS, 40), rand(pdfB, 60))
 result, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
 ```
 """
-function fit_and_sWeights(pdfS, pdfB, data; support=nothing, init_fsig=0.5)
+function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
     N = length(data)
     support = isnothing(support) ? extrema(data) : support
 
@@ -329,12 +331,12 @@ function fit_and_sWeights(pdfS, pdfB, data; support=nothing, init_fsig=0.5)
     init_pars = [init_nS, init_nB]
 
     # Fit using extended NLL
-    result = fit_enll(model, init_pars, data; support=support)
+    result = fit_enll(model, init_pars, data; support = support)
 
     nS, nB = Optim.minimizer(result) |> Tuple{Float64,Float64}
 
     # Redefine the NLL objective for Hessian calculation
-    nll(p) = extended_nll(model, p, data; support=support)
+    nll(p) = extended_nll(model, p, data; support = support)
 
     # Covariance estimate (inverse Hessian)
     hess = ForwardDiff.hessian(nll, [nS, nB])
@@ -371,7 +373,13 @@ df = sWeights_dataframe(pdfS, pdfB, 0.4, xs)
 """
 function sWeights_dataframe(pdfS, pdfB, fraction_signal, xs)
     ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
-    return DataFrame(x=xs, ws_signal=ws, ws_background=wb, var_signal=vs, var_background=vb)
+    return DataFrame(
+        x = xs,
+        ws_signal = ws,
+        ws_background = wb,
+        var_signal = vs,
+        var_background = vb,
+    )
 end
 
 """
@@ -394,7 +402,16 @@ ws = ones(100)
 plot_sWeighted_histogram(xs, ws)
 ```
 """
-function plot_sWeighted_histogram(xs, weights; variances=nothing, nbins=30, label="sWeighted", xlabel="x", ylabel="Events", color=:blue)
+function plot_sWeighted_histogram(
+    xs,
+    weights;
+    variances = nothing,
+    nbins = 30,
+    label = "sWeighted",
+    xlabel = "x",
+    ylabel = "Events",
+    color = :blue,
+)
     h = fit(Histogram, xs, nbins)
     bin_edges = h.edges[1]
     bin_centers = (bin_edges[1:end-1] + bin_edges[2:end]) ./ 2
@@ -412,8 +429,23 @@ function plot_sWeighted_histogram(xs, weights; variances=nothing, nbins=30, labe
     end
     if variances !== nothing
         errs = sqrt.(errs)
-        bar(bin_centers, counts, yerr=errs, label=label, xlabel=xlabel, ylabel=ylabel, color=color)
+        bar(
+            bin_centers,
+            counts,
+            yerr = errs,
+            label = label,
+            xlabel = xlabel,
+            ylabel = ylabel,
+            color = color,
+        )
     else
-        bar(bin_centers, counts, label=label, xlabel=xlabel, ylabel=ylabel, color=color)
+        bar(
+            bin_centers,
+            counts,
+            label = label,
+            xlabel = xlabel,
+            ylabel = ylabel,
+            color = color,
+        )
     end
 end
