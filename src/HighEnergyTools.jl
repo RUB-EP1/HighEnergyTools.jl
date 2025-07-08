@@ -1,7 +1,12 @@
 module HighEnergyTools
 
-using QuadGK, Parameters
-using Random, Statistics
+using NumericalDistributions
+using DistributionsHEP
+using Distributions
+using Parameters
+using Statistics
+using QuadGK
+using Random
 using FHist
 using Optim
 using Distributions
@@ -12,6 +17,9 @@ using ForwardDiff
 using Plots, RecipesBase
 using Plots.PlotMeasures: mm
 
+import Distributions: pdf
+export pdf
+
 export gaussian_scaled, polynomial_scaled, breit_wigner_scaled, voigt_scaled
 include("functions.jl")
 
@@ -20,12 +28,11 @@ include("sampling.jl")
 
 export fit_enll, extended_nll
 export chi2
+export nll, fit_nll
 include("fitting.jl")
 
 export Anka, Frida
-export peak1_func, peak2_func
-export background_func
-export total_func
+export build_model
 include("models.jl")
 
 export find_zero_two_sides

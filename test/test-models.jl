@@ -1,21 +1,62 @@
 using HighEnergyTools
+using Distributions
+using DistributionsHEP
 using Test
 
-@testset "Anka" begin
-    ankamod = Anka(; μ = 2.35, σ = 0.01, flat = 1.5, log_slope = 2.1, a = 5.0)
-    @test total_func(ankamod, 2.3) ≈ 8.745018633265861
+@testset "Chebyshev" begin
+    a = HighEnergyTools.scaled_chebyshev([1, 1], (-1, 1))
+    @test pdf(a, -1) ≈ 0.0
+    @test pdf(a, 1) ≈ 1.0
+
+    b = HighEnergyTools.scaled_chebyshev([1, 1], (3.0, 7.0))
+    @test pdf(b, 3.0) ≈ 0.0
+    @test pdf(b, 7.0) ≈ 0.5
 end
 
-@testset "Frida" begin
-    fridamod = Frida(;
-        μ1 = 2.29,
-        σ1 = 0.005,
-        μ2 = 2.47,
-        σ2 = 0.008,
-        flat = 1.5,
-        log_slope = 2.1,
-        a1 = 5.0,
-        a2 = 1.0,
-    )
-    @test total_func(fridamod, 2.3) ≈ 9.421676416183121
+anka = Anka(1.1, 3.3)
+pars = (sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
+model = build_model(anka, pars)
+
+# # for visual inspection
+# using Plots
+# theme(:boxed)
+# let
+#     plot(x -> pdf(model, x), 1.1, 3.3, ylims = (0, :auto))
+#     plot!(x -> pdf(model.components[1], x) * model.prior.p[1], 1.1, 3.3, fill = 0)
+#     plot!(x -> pdf(model.components[2], x) * model.prior.p[2], 1.1, 3.3, ls=:dash)
+# end
+
+@testset "Anka model" begin
+    @test model.components[1] isa Truncated{<:Normal}
+    @test model.components[2] isa LocationScale{A, B, <:Chebyshev} where {A, B}
+    @test model.prior.p[1] ≈ 0.5
+    @test model.prior.p[2] ≈ 0.5
 end
+
+
+frida = Frida(1.1, 3.3)
+pars = (
+    sig1 = (μ = 2.1, σ = 0.05),
+    sig2 = (μ = 2.4, σ = 0.08),
+    bgd = (coeffs = [1.5, 1.1],),
+    logfS1 = -1.0,
+    logfS2 = -1.0,
+)
+model = build_model(frida, pars)
+
+# # for visual inspection
+# using Plots
+# theme(:boxed)
+# let
+#     plot(x -> pdf(model, x), 1.1, 3.3, ylims = (0, :auto))
+#     plot!(x -> pdf(model.components[1], x) * model.prior.p[1], 1.1, 3.3, fill = 0)
+#     plot!(x -> pdf(model.components[2], x) * model.prior.p[2], 1.1, 3.3, fill = 0)
+#     plot!(x -> pdf(model.components[3], x) * model.prior.p[3], 1.1, 3.3)
+# end
+
+@testset "Frida model" begin
+    @test model.components[1] isa Truncated{<:Normal}
+    @test model.components[2] isa Truncated{<:Normal}
+    @test model.components[3] isa LocationScale{A, B, <:Chebyshev} where {A, B}
+end
+
