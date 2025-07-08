@@ -180,3 +180,47 @@ function chi2(h, d::UnivariateDistribution)
     f(x) = pdf(d, x) * scale
     chi2(h, f)
 end
+
+
+
+
+"""
+    fit_nll(model_builder, data, init_pars; alg = NelderMead(), kw...)
+
+Fit the model parameters using the negative log likelihood (NLL) method.
+
+# Arguments
+- `model_builder`: A function that builds a model from parameters.
+- `data`: A collection of data points.
+- `init_pars`: Initial parameters for the model.
+
+# Example
+
+```julia
+using Plots, ComponentArray, HighEnergyTools
+theme(:boxed)
+
+anka = Anka(1.1, 3.3)
+init_pars = ComponentArray(sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
+
+fit_res = fit_nll(anka, data, init_pars)
+best_pars = fit_res.minimizer
+best_model = build_model(anka, best_pars)
+stephist(data; normalize = true, ylims = (0, :auto))
+plot!(x -> pdf(best_model, x), 1.1, 3.3, ylims = (0, :auto))
+```
+
+"""
+function nll(d, data)
+    _sumlog = sum(data) do x
+        v = pdf(d, x)
+        # shell we @warn when pdf < 0?
+        v > 0 ? log(v) : -1e10
+    end
+    return -_sumlog
+end
+
+function fit_nll(model_builder, data, init_pars; alg = NelderMead(), kw...)
+    objective(p) = nll(build_model(model_builder, p), data)
+    optimize(objective, init_pars, alg; kw...)
+end
