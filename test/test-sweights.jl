@@ -1,10 +1,8 @@
-# src/test_sweights.jl
-
-using Test
 using HighEnergyTools
 using Distributions
 using LinearAlgebra
 using QuadGK
+using Test
 
 @testset "Wmatrix with explicit functions" begin
     dS(x) = pdf(Normal(0, 1), x)
