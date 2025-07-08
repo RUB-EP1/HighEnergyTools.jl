@@ -40,3 +40,37 @@ function find_zero_two_sides(xv, yv)
     #
     [x_left_zero, x_right_zero]
 end
+
+"""
+    support_union(pdfS::MixtureModel, pdfB::MixtureModel) -> Tuple{Float64, Float64}
+
+Compute the union of the supports (ranges) of two `MixtureModel` distributions.
+
+This function determines the smallest interval that fully contains the support of both the signal and background mixture models. It is useful for defining integration limits when combining or comparing two distributions, such as in sPlot or likelihood calculations.
+
+# Arguments
+- `pdfS::MixtureModel`: The signal mixture model (from Distributions.jl).
+- `pdfB::MixtureModel`: The background mixture model.
+
+# Returns
+- `Tuple{Float64, Float64}`: A tuple `(lower, upper)` representing the minimum and maximum x-values that cover the support of both models.
+
+# Notes
+- The function uses `extrema` to find the minimum and maximum values for each mixture model.
+- For most standard distributions, this will return finite values, but for distributions with infinite support (like Normal), the result will be `(-Inf, Inf)`.
+- If you want to restrict the support to a finite range (e.g., for numerical integration), you may need to override or post-process the result.
+
+# Example
+```julia
+using Distributions
+pdfS = MixtureModel([Normal(0, 1)], [1.0])
+pdfB = MixtureModel([Normal(5, 1.5)], [1.0])
+lims = support_union(pdfS, pdfB)
+println(lims)  # Output: (-Inf, Inf)
+```
+"""
+function support_union(pdfS::MixtureModel, pdfB::MixtureModel)
+    s1, s2 = extrema(pdfS)
+    b1, b2 = extrema(pdfB)
+    return (min(s1, b1), max(s2, b2))
+end

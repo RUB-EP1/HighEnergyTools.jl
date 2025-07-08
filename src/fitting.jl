@@ -3,7 +3,7 @@ _quadgk_call(f, support) = quadgk(f, support...)[1]
 function _data_in_support(data, support)
     red_data = filter(x -> support[1] < x < support[2], data)
     if length(data) > length(red_data)
-        print("Reduced dataset to domain $support to get normalizations right")
+        @info "Reduced dataset to domain $support to get normalizations right"
     end
     return red_data
 end
@@ -128,4 +128,55 @@ function fit_enll(
         collect(init_pars),
         alg,
     )
+end
+
+"""
+    chi2(h, model)
+
+Compute the binned χ² statistic between a histogram `h` and a model function.
+
+- `h`: Histogram object (must support `bincenters` and `bincounts`).
+- `model`: Function mapping bin centers to expected counts.
+
+Returns the sum over bins of (expected - observed)^2 / observed, skipping bins with zero observed counts.
+
+# Example
+```julia
+using StatsBase
+h = fit(Histogram, randn(100), 20)
+model(x) = 5 * exp(-x^2/2)
+chi2(h, model)
+```
+"""
+function chi2(h, model)
+    xv = bincenters(h)
+    yv = bincounts(h)
+    yv_pred = model.(xv)
+    # Avoid division by zero: skip bins with zero observed counts
+    mask = yv .> 0
+    return sum(@. (yv_pred[mask] - yv[mask])^2 / yv[mask])
+end
+
+"""
+    chi2(h, d::UnivariateDistribution)
+
+Compute the binned χ² statistic between a histogram `h` and a univariate distribution `d`.
+
+- `h`: Histogram object (must support `bincenters`, `bincounts`, and `integral`).
+- `d`: A `UnivariateDistribution` from Distributions.jl.
+
+Scales the PDF of `d` to match the total counts in `h` before computing χ².
+
+# Example
+```julia
+using StatsBase, Distributions
+h = fit(Histogram, rand(Normal(), 100), 20)
+d = Normal()
+chi2(h, d)
+```
+"""
+function chi2(h, d::UnivariateDistribution)
+    scale = integral(h; width = true)
+    f(x) = pdf(d, x) * scale
+    chi2(h, f)
 end
