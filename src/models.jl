@@ -27,8 +27,8 @@ Build a two-component mixture model from signal and background components.
 """
 function build_two_component_model(pars; build_signal, build_backgr)
     @unpack sig, bgd, logfB = pars
-    prior_unnorm = [one(logfB), exp(logfB)]
-    prior = prior_unnorm ./ sum(prior_unnorm)
+    prior_unnormalized = [one(logfB), exp(logfB)]
+    prior = prior_unnormalized ./ sum(prior_unnormalized)
     signal_model = build_signal(sig)
     background_model = build_backgr(bgd)
     return MixtureModel([signal_model, background_model], prior)
@@ -54,8 +54,8 @@ pars = (sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
 model = build_model(anka, pars)
 ```
 """
-@with_kw struct Anka{P <: Real} <: SpectrumModel
-    support::Tuple{P, P}
+@with_kw struct Anka{P<:Real} <: SpectrumModel
+    support::Tuple{P,P}
 end
 Anka(a, b) = Anka((a, b))
 
@@ -128,8 +128,8 @@ pars = (
 model = build_model(frida, pars)
 ```
 """
-@with_kw struct Frida{P <: Real} <: SpectrumModel
-    support::Tuple{P, P}
+@with_kw struct Frida{P<:Real} <: SpectrumModel
+    support::Tuple{P,P}
 end
 Frida(a, b) = Frida((a, b))
 
@@ -156,8 +156,8 @@ function build_model(m::Frida, pars)
     @unpack sig1, sig2, bgd = pars
     @unpack logfS1, logfS2 = pars
     #
-    prior_unnorm = [exp(logfS1), exp(logfS2), one(logfS1)]
-    prior = prior_unnorm ./ sum(prior_unnorm)
+    prior_unnormalized = [exp(logfS1), exp(logfS2), one(logfS1)]
+    prior = prior_unnormalized ./ sum(prior_unnormalized)
     #
     s1_model = truncated(Normal(sig1.μ, sig1.σ), m.support...)
     s2_model = truncated(Normal(sig2.μ, sig2.σ), m.support...)

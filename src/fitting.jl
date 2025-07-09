@@ -166,12 +166,12 @@ nll_value = nll(d, data)
 - [`extended_nll`](@ref): Calculate extended negative log likelihood
 """
 function nll(d, data)
-    _sumlog = sum(data) do x
+    _sum_log = sum(data) do x
         v = pdf(d, x)
         # shell we @warn when pdf < 0?
         v > 0 ? log(v) : -1e10
     end
-    return -_sumlog
+    return -_sum_log
 end
 
 """
