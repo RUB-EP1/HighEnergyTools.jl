@@ -10,8 +10,8 @@ using Random
 using FHist
 using Optim
 #
-using Plots, RecipesBase
-using Plots.PlotMeasures: mm
+using RecipesBase
+const mm = 1.0
 
 import Distributions: pdf
 export pdf
