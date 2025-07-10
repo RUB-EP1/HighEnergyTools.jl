@@ -10,6 +10,7 @@ using Random
 using FHist
 using Optim
 #
+using Plots
 using RecipesBase
 const mm = 1.0
 
