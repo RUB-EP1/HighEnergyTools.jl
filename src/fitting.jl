@@ -209,3 +209,105 @@ function fit_nll(pars2model, data, init_pars; alg = NelderMead(), kw...)
     objective(p) = nll(pars2model(p), data)
     optimize(objective, init_pars, alg; kw...)
 end
+
+
+
+
+"""
+    Extended{M, T<:Number}
+
+A wrapper for models that includes the expected number of events for extended likelihood fitting.
+
+# Fields
+- `model::M`: The underlying model (e.g., a distribution or mixture model)
+- `n::T`: The expected number of events
+
+# Example
+```julia
+using HighEnergyTools
+using HighEnergyTools.Distributions
+
+# Create a simple extended model
+components = [Normal(0.0, 1.0), Normal(2.0, 0.5)]
+yields = [100.0, 50.0]
+ext_model = Extended(components, (yields=yields,))
+
+# The extended model can be used like a regular distribution
+pdf(ext_model, 1.0)  # evaluates the underlying model
+nll(ext_model, data)  # calculates extended negative log likelihood
+```
+"""
+struct Extended{M, T <: Number}
+    model::M
+    n::T
+end
+
+"""
+    Extended(components::Vector, pars)
+
+Create an extended model from a vector of components and parameters.
+
+# Arguments
+- `components::Vector`: Vector of distribution components
+- `pars`: Named tuple containing `yields` field with expected yields for each component
+
+# Returns
+- `Extended`: An extended model with the mixture of components and total expected yield
+
+# Example
+```julia
+components = [Normal(0.0, 1.0), Normal(2.0, 0.5)]
+pars = (yields=[100.0, 50.0],)
+ext_model = Extended(components, pars)
+```
+"""
+function Extended(components::Vector, pars)
+    @unpack yields = pars
+    n = sum(yields)
+    fractions = yields ./ n
+    _model = MixtureModel(components, fractions)
+    Extended(_model, n)
+end
+
+
+Distributions.pdf(p::Extended, x) = pdf(p.model, x)
+
+"""
+    nll(p::Extended{<:AbstractMixtureModel}, data)
+
+Calculate the extended negative log likelihood for the extended model.
+
+The extended NLL includes both the standard NLL term and a Poisson term for the total yield:
+    NLL = -∑log(pdf(model, x_i)) + μ - n*log(μ)
+
+where μ is the expected number of events and n is the observed number of events.
+
+# Arguments
+- `p`: The extended mixture model
+- `data`: Collection of observed data points
+
+# Returns
+- The extended negative log likelihood value
+
+# Example
+```julia
+using HighEnergyTools
+using HighEnergyTools.Distributions
+
+# Create extended model
+components = [Normal(0.0, 1.0), Normal(2.0, 0.5)]
+ext_model = Extended(components, (yields=[100.0, 50.0],))
+
+# Generate some data
+data = rand(Normal(0.0, 1.0), 80)
+
+# Calculate extended NLL
+enll_value = nll(ext_model, data)
+```
+"""
+function HighEnergyTools.nll(p::Extended{<:AbstractMixtureModel}, data)
+    _nll = HighEnergyTools.nll(p.model, data)
+    n = length(data)
+    μ = p.n
+    return _nll + μ - n * log(μ)
+end
