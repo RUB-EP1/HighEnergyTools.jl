@@ -15,26 +15,21 @@ model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
 sP = sPlot(model)
 ```
 """
-struct sPlot{M,T}
+struct sPlot{M, T}
     model::M
     inv_W::Matrix{T}
-end
-
-"""
-    sPlot(model::MixtureModel)
-
-Construct an sPlot object from a MixtureModel.
-"""
-function sPlot(model::MixtureModel)
-    comps = model.components
-    weights = model.prior.p
-    f(x) = sum(weights[i] * pdf(comps[i], x) for i in eachindex(comps))
-    lims = (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps]))
-    ϵ = 1e-12
-    W = [quadgk(x -> pdf(ci, x) * pdf(cj, x) / max(f(x), ϵ), lims...)[1]
-        for ci in comps, cj in comps]
-    inv_W = inv(W)
-    return sPlot(model, inv_W)
+    #
+    function sPlot(model::MixtureModel)
+        comps = model.components
+        weights = model.prior.p
+        f(x) = sum(weights[i] * pdf(comps[i], x) for i in eachindex(comps))
+        lims = (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps]))
+        ϵ = 1e-12
+        W = [quadgk(x -> pdf(ci, x) * pdf(cj, x) / max(f(x), ϵ), lims...)[1]
+             for ci in comps, cj in comps]
+        inv_W = inv(W)
+        return new{typeof(model), eltype(inv_W)}(model, inv_W)
+    end
 end
 
 """
@@ -60,10 +55,10 @@ fS(x) = sWeights(sP, [x])[1,1]
 fB(x) = sWeights(sP, [x])[1,2]
 ```
 """
-function sWeights(sPlot::sPlot, xs::AbstractVector)
-    comps = sPlot.model.components
-    weights = sPlot.model.prior.p
-    inv_W = sPlot.inv_W
+function sWeights(sP::sPlot, xs::AbstractVector)
+    comps = sP.model.components
+    weights = sP.model.prior.p
+    inv_W = sP.inv_W
     ncomp = length(comps)
     f(x) = sum(weights[i] * pdf(comps[i], x) for i in 1:ncomp)
     α = [inv_W[:, i] ./ abs(sum(inv_W[:, i])) for i in 1:ncomp]
@@ -100,14 +95,14 @@ fB(x) = sWeights(sP, [x])[1,2]
 ```
 """
 function sWeights(
-    pdfS::UnivariateDistribution, 
-    pdfB::UnivariateDistribution, 
-    fraction_signal::Real, 
-    xs::AbstractVector
+    pdfS::UnivariateDistribution,
+    pdfB::UnivariateDistribution,
+    fraction_signal::Real,
+    xs::AbstractVector,
 )
     model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
-    sW = sPlot(model)
-    return sWeights(sW, xs)
+    sP = sPlot(model)
+    return sWeights(sP, xs)
 end
 
 """
@@ -140,7 +135,7 @@ function sWeights(
     pdfB::UnivariateDistribution,
     n_signal::Real,
     n_background::Real,
-    xs::AbstractVector
+    xs::AbstractVector,
 )
     N = n_signal + n_background
     f_signal = n_signal / N
@@ -148,7 +143,7 @@ function sWeights(
 end
 
 """
-    Wmatrix(sP::sPlot)
+    wMatrix(sP::sPlot)
 
 Get the weight matrix from an sPlot object.
 
@@ -164,10 +159,10 @@ pdfS = Normal(0, 1)
 pdfB = Normal(5, 1)
 model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
 sP = sPlot(model)
-W = Wmatrix(sP)
+W = wMatrix(sP)
 ```
 """
-function Wmatrix(sP::sPlot)
+function wMatrix(sP::sPlot)
     return inv(sP.inv_W)
 end
 
@@ -222,7 +217,7 @@ function inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fract
 end
 
 """
-    check_Wmatrix_condition(sP::sPlot)
+    check_wMatrix_condition(sP::sPlot)
 
 Warn if the sPlot weight matrix is ill-conditioned, which may indicate numerical instability.
 
@@ -238,11 +233,11 @@ pdfS = Normal(0, 1)
 pdfB = Normal(5, 1)
 model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
 sP = sPlot(model)
-condW = check_Wmatrix_condition(sP)
+condW = check_wMatrix_condition(sP)
 ```
 """
-function check_Wmatrix_condition(sP::sPlot)
-    W = Wmatrix(sP)
+function check_wMatrix_condition(sP::sPlot)
+    W = wMatrix(sP)
     condW = cond(W)
     if condW > 1e8
         @warn "Weight matrix is ill-conditioned (condition number = $condW). Results may be unstable."
@@ -275,13 +270,13 @@ ws, wb, vs, vb = sWeights_vector_with_variance(sP, xs)
 function sWeights_vector_with_variance(sP::sPlot, xs)
     weights = sWeights(sP, xs)
     wS, wB = eachcol(weights)
-    
+
     # Variance calculation
     V = sP.inv_W
     comps = sP.model.components
     prior_weights = sP.model.prior.p
     f(x) = sum(prior_weights[i] * pdf(comps[i], x) for i in eachindex(comps))
-    
+
     function variance(component_idx, x)
         ps = [pdf(comp, x) for comp in comps]
         v = 0.0
@@ -290,10 +285,10 @@ function sWeights_vector_with_variance(sP::sPlot, xs)
         end
         return v / (f(x)^2)
     end
-    
+
     vS = [variance(1, x) for x in xs]
     vB = [variance(2, x) for x in xs]
-    
+
     return (wS, wB, vS, vB)
 end
 
