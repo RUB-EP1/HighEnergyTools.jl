@@ -130,59 +130,6 @@ function fit_enll(
     )
 end
 
-"""
-    chi2(h, model)
-
-Compute the binned χ² statistic between a histogram `h` and a model function.
-
-- `h`: Histogram object (must support `bincenters` and `bincounts`).
-- `model`: Function mapping bin centers to expected counts.
-
-Returns the sum over bins of (expected - observed)^2 / observed, skipping bins with zero observed counts.
-
-# Example
-```julia
-using StatsBase
-h = fit(Histogram, randn(100), 20)
-model(x) = 5 * exp(-x^2/2)
-chi2(h, model)
-```
-"""
-function chi2(h, model)
-    xv = bincenters(h)
-    yv = bincounts(h)
-    yv_pred = model.(xv)
-    # Avoid division by zero: skip bins with zero observed counts
-    mask = yv .> 0
-    return sum(@. (yv_pred[mask] - yv[mask])^2 / yv[mask])
-end
-
-"""
-    chi2(h, d::UnivariateDistribution)
-
-Compute the binned χ² statistic between a histogram `h` and a univariate distribution `d`.
-
-- `h`: Histogram object (must support `bincenters`, `bincounts`, and `integral`).
-- `d`: A `UnivariateDistribution` from Distributions.jl.
-
-Scales the PDF of `d` to match the total counts in `h` before computing χ².
-
-# Example
-```julia
-using StatsBase, Distributions
-h = fit(Histogram, rand(Normal(), 100), 20)
-d = Normal()
-chi2(h, d)
-```
-"""
-function chi2(h, d::UnivariateDistribution)
-    scale = FHist.integral(h; width = true)
-    f(x) = pdf(d, x) * scale
-    chi2(h, f)
-end
-
-
-
 
 """
     fit_nll(model_builder, data, init_pars; alg = NelderMead(), kw...)
