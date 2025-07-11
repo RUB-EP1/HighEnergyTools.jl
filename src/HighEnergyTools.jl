@@ -11,7 +11,6 @@ using FHist
 using Optim
 using Distributions
 using LinearAlgebra
-using DataFrames
 using ForwardDiff
 #
 using Plots, RecipesBase
@@ -50,7 +49,6 @@ export check_wMatrix_condition
 include("sweights.jl")
 
 export fit_and_sWeights
-export sWeights_dataframe
 export plot_sWeighted_histogram
 include("sWeights-extra.jl")
 

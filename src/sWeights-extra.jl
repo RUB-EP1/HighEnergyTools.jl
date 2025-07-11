@@ -67,67 +67,7 @@ function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
     return result, sP, nS, nB, cov, ws, wb, vs, vb
 end
 
-"""
-    sWeights_dataframe(sP::sPlot, xs)
 
-Return a DataFrame with data, sWeights, and variances for each event using the sPlot object.
-
-# Arguments
-- `sP`: An `sPlot` object.
-- `xs`: Vector of data points.
-
-# Returns
-- `df`: DataFrame with columns: :x, :ws_signal, :ws_background, :var_signal, :var_background
-
-# Example
-```julia
-using DataFrames
-pdfS = Normal(0, 1)
-pdfB = Normal(5, 1.5)
-model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
-sP = sPlot(model)
-xs = [-2.0, 0.0, 5.0, 8.0]
-df = sWeights_dataframe(sP, xs)
-```
-"""
-function sWeights_dataframe(sP::sPlot, xs)
-    ws, wb, vs, vb = sWeights_vector_with_variance(sP, xs)
-    return DataFrame(
-        x = xs,
-        ws_signal = ws,
-        ws_background = wb,
-        var_signal = vs,
-        var_background = vb,
-    )
-end
-
-"""
-    sWeights_dataframe(pdfS, pdfB, fraction_signal, xs)
-
-Return a DataFrame with data, sWeights, and variances for each event using individual distributions.
-
-# Arguments
-- `pdfS`, `pdfB`: Signal and background UnivariateDistributions.
-- `fraction_signal`: Estimated signal fraction.
-- `xs`: Vector of data points.
-
-# Returns
-- `df`: DataFrame with columns: :x, :ws_signal, :ws_background, :var_signal, :var_background
-
-# Example
-```julia
-using DataFrames
-pdfS = Normal(0, 1)
-pdfB = Normal(5, 1.5)
-xs = [-2.0, 0.0, 5.0, 8.0]
-df = sWeights_dataframe(pdfS, pdfB, 0.4, xs)
-```
-"""
-function sWeights_dataframe(pdfS, pdfB, fraction_signal, xs)
-    model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
-    sP = sPlot(model)
-    return sWeights_dataframe(sP, xs)
-end
 
 """
     plot_sWeighted_histogram(xs, weights; variances=nothing, nbins=30, label="sWeighted", xlabel="x", ylabel="Events", color=:blue)
