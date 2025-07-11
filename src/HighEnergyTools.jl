@@ -48,9 +48,11 @@ export wMatrix, inv_W
 export sWeights_vector, sWeights_covariance
 export sWeights_vector_with_variance
 export check_wMatrix_condition
+include("sweights.jl")
+
 export fit_and_sWeights
 export sWeights_dataframe
 export plot_sWeighted_histogram
-include("sweights.jl")
+include("sWeights-extra.jl")
 
 end # module HighEnergyTools
