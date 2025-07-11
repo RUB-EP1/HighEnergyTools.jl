@@ -3,7 +3,7 @@ _quadgk_call(f, support) = quadgk(f, support...)[1]
 function _data_in_support(data, support)
     red_data = filter(x -> support[1] < x < support[2], data)
     if length(data) > length(red_data)
-        print("Reduced dataset to domain $support to get normalizations right")
+        @info "Reduced dataset to domain $support to get normalizations right"
     end
     return red_data
 end

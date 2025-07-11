@@ -9,6 +9,9 @@ using QuadGK
 using Random
 using FHist
 using Optim
+using Distributions
+using LinearAlgebra
+using ForwardDiff
 #
 using RecipesBase
 const mm = 1.0
@@ -32,9 +35,21 @@ include("models.jl")
 
 export find_zero_two_sides
 export interpolate_to_zero
+export support_union
 include("utils.jl")
 
 export WithData, curvehistpulls
 include("plotting_recipe.jl")
+
+export sPlot, sWeights
+export wMatrix, inv_W
+export sWeights_vector, sWeights_covariance
+export sWeights_vector_with_variance
+export check_wMatrix_condition
+include("sweights.jl")
+
+export fit_and_sWeights
+export plot_sWeighted_histogram
+include("sWeights-extra.jl")
 
 end # module HighEnergyTools

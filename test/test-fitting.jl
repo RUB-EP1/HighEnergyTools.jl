@@ -1,7 +1,9 @@
+using Test
 using HighEnergyTools
 using ComponentArrays
 using Random
-using Test
+using Distributions
+using FHist
 
 @testset "Simple fitting" begin
     init_pars = (; μ = 0.35, σ = 0.8, a = 1.0)
@@ -16,8 +18,6 @@ using Test
     # @test ext_unbinned_fit.ls_success
     @test isapprox(best_pars_extnll.μ, 0.42965348; atol = 1e-6)
 end
-
-
 
 
 #
