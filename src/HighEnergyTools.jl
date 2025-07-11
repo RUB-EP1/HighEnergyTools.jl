@@ -22,8 +22,10 @@ include("functions.jl")
 export sample_rejection, sample_inversion
 include("sampling.jl")
 
-export fit_enll, extended_nll
+export fit_enll
+export extended_nll
 export nll, fit_nll
+export Extended
 include("fitting.jl")
 
 export Anka, Frida
