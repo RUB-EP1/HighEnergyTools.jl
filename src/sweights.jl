@@ -1,112 +1,117 @@
 """
-    Wmatrix(dS::Function, dB::Function, f::Function, lims::Tuple)
+    sPlot(model::MixtureModel)
 
-Computes the 2x2 weight matrix for signal/background.
+Encapsulates the sPlot decomposition for a mixture model.
 
-# Arguments
-- `dS`: Signal PDF as a function.
-- `dB`: Background PDF as a function.
-- `f`: Total PDF as a function (e.g., mixture of signal and background).
-- `lims`: Tuple giving integration limits `(lower, upper)`.
-
-# Returns
-- 2×2 matrix `W` where `W[i,j] = ∫ (di(x) * dj(x) / f(x)) dx`
-
-# Example
-```julia
-dS(x) = pdf(Normal(0,1), x)
-dB(x) = pdf(Normal(5,1), x)
-f(x) = 0.5*dS(x) + 0.5*dB(x)
-W = Wmatrix(dS, dB, f, (-5, 10))
-```
-"""
-function Wmatrix(dS, dB, f, lims::Tuple{<:Real, <:Real})
-    comps = [dS, dB]
-    ϵ = 1e-12  # Small threshold to avoid division by zero
-    W = [quadgk(x -> di(x) * dj(x) / max(f(x), ϵ), lims...)[1] for di in comps, dj in comps]
-    return W
-end
-
-"""
-    Wmatrix(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, f::Function)
-
-Computes the 2×2 sWeight matrix using signal and background `UnivariateDistribution`s
-from `Distributions.jl` and a total PDF function `f(x)`.
-
-# Arguments
-- `pdfS`: Signal model, a `UnivariateDistribution` (e.g., `Normal(0, 1)`).
-- `pdfB`: Background model, also a `UnivariateDistribution`.
-- `f`: Total PDF as a function (e.g., `x -> f_signal * pdf(pdfS, x) + (1 - f_signal) * pdf(pdfB, x)`)
-
-# Returns
-- 2×2 matrix `W` where `W[i,j] = ∫ (di(x) * dj(x) / f(x)) dx`, integrated over the union support.
+# Fields
+- `model`: The `MixtureModel` (from Distributions.jl).
+- `inv_W`: The inverse sPlot weight matrix (covariance of yields).
 
 # Example
 ```julia
 pdfS = Normal(0, 1)
-pdfB = Normal(5, 1.5)
-f(x) = 0.4 * pdf(pdfS, x) + 0.6 * pdf(pdfB, x)
-
-W = Wmatrix(pdfS, pdfB, f)
+pdfB = Normal(5, 1)
+model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
+sP = sPlot(model)
 ```
 """
-function Wmatrix(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, f::Function)
-    dS(x) = pdf(pdfS, x)
-    dB(x) = pdf(pdfB, x)
-    lims = support_union(pdfS, pdfB)
-    return Wmatrix(dS, dB, f, lims)
+struct sPlot{M,T}
+    model::M
+    inv_W::Matrix{T}
 end
 
 """
-    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+    sPlot(model::MixtureModel)
 
+Construct an sPlot object from a MixtureModel.
+"""
+function sPlot(model::MixtureModel)
+    comps = model.components
+    weights = model.prior.p
+    f(x) = sum(weights[i] * pdf(comps[i], x) for i in eachindex(comps))
+    lims = (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps]))
+    ϵ = 1e-12
+    W = [quadgk(x -> pdf(ci, x) * pdf(cj, x) / max(f(x), ϵ), lims...)[1]
+        for ci in comps, cj in comps]
+    inv_W = inv(W)
+    return sPlot(model, inv_W)
+end
+
+"""
+    sWeights(sPlot::sPlot, xs::AbstractVector)
+
+Compute the sWeights for each component and each data point.
+
+# Arguments
+- `sPlot`: An `sPlot` object containing the mixture model and its inverse weight matrix.
+- `xs`: Vector of data points where sWeights are evaluated.
+
+# Returns
+- `weights`: Matrix of size (length(xs), n_components), where each column is the sWeights for a component.
+
+# Example
+```julia
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1)
+model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
+sP = sPlot(model)
+wS, wB = sWeights(sP, xs) |> eachcol
+fS(x) = sWeights(sP, [x])[1,1]
+fB(x) = sWeights(sP, [x])[1,2]
+```
+"""
+function sWeights(sPlot::sPlot, xs::AbstractVector)
+    comps = sPlot.model.components
+    weights = sPlot.model.prior.p
+    inv_W = sPlot.inv_W
+    ncomp = length(comps)
+    f(x) = sum(weights[i] * pdf(comps[i], x) for i in 1:ncomp)
+    α = [inv_W[:, i] ./ abs(sum(inv_W[:, i])) for i in 1:ncomp]
+    result = zeros(length(xs), ncomp)
+    for i in 1:ncomp
+        for (j, x) in enumerate(xs)
+            numer = sum(α[i][k] * pdf(comps[k], x) for k in 1:ncomp)
+            result[j, i] = numer / f(x) * weights[i]
+        end
+    end
+    return result
+end
+
+"""
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real, xs::AbstractVector)
 Computes the sWeight functions for signal and background components
 based on individual distributions.
-
 # Arguments
 - `pdfS`: Signal model as a `UnivariateDistribution`.
 - `pdfB`: Background model as a `UnivariateDistribution`.
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
-
 # Returns
-- A pair of functions `(w_signal, w_background)` such that:
-    - `w_signal(x)` = sWeight for signal at point `x`
-    - `w_background(x)` = sWeight for background at point `x`
-
+- `weights`: Matrix of size (length(xs), n_components), where each column is the sWeights for a component.
 # Example
 ```julia
 using Distributions
-
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 f_sig = 0.4
-
-wS, wB = sWeights(pdfS, pdfB, f_sig)
-println(wS(0.0))  # ≈ 1.0 (near pure signal region)
-println(wB(5.0))  # ≈ 1.0 (near pure background region)
+x = vcat(rand(pdfS, 40), rand(pdfB, 60))
+wS, wB = sWeights(pdfS, pdfB, f_sig, x) |> eachcol
+fS(x) = sWeights(sP, [x])[1,1]
+fB(x) = sWeights(sP, [x])[1,2]
 ```
 """
-function sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
-    # Define combined PDF f(x) = fS * pdfS(x) + fB * pdfB(x)
-    f(x) = fraction_signal * pdf(pdfS, x) + (1 - fraction_signal) * pdf(pdfB, x)
-    # Compute the weight matrix
-    W = Wmatrix(pdfS, pdfB, f)
-    α = inv(W)
-    # Normalize α vectors
-    αS = α[:, 1] ./ abs(sum(α[:, 1]))
-    αB = α[:, 2] ./ abs(sum(α[:, 2]))
-    # Define weight functions
-    numerator_s(x) = αS[1] * pdf(pdfS, x) + αS[2] * pdf(pdfB, x)
-    numerator_b(x) = αB[1] * pdf(pdfS, x) + αB[2] * pdf(pdfB, x)
-    #
-    weight_signal(x) = numerator_s(x) / f(x) * fraction_signal
-    weight_background(x) = numerator_b(x) / f(x) * (1 - fraction_signal)
-    #
-    return (weight_signal, weight_background)
+function sWeights(
+    pdfS::UnivariateDistribution, 
+    pdfB::UnivariateDistribution, 
+    fraction_signal::Real, 
+    xs::AbstractVector
+)
+    model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
+    sW = sPlot(model)
+    return sWeights(sW, xs)
 end
 
 """
-    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, n_signal::Real, n_background::Real)
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, n_signal::Real, n_background::Real, xs::AbstractVector)
 
 Compute the sWeight functions for signal and background components using the absolute fitted yields.
 
@@ -117,17 +122,17 @@ Compute the sWeight functions for signal and background components using the abs
 - `n_background`: Fitted number of background events (must be non-negative).
 
 # Returns
-- A pair of functions `(w_signal, w_background)` such that:
-    - `w_signal(x)`: sWeight for signal at point `x`
-    - `w_background(x)`: sWeight for background at point `x`
+- `weights`: Matrix of size (length(xs), n_components), where each column is the sWeights for a component.
 
 # Example
 ```julia
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 nS, nB = 40, 60
-wS, wB = sWeights(pdfS, pdfB, nS, nB)
-println(wS(0.0))
+x = vcat(rand(pdfS, 40), rand(pdfB, 60))
+wS, wB = sWeights(pdfS, pdfB, nS, nB, x) |> eachcol
+fS(x) = sWeights(sP, [x])[1,1]
+fB(x) = sWeights(sP, [x])[1,2]
 ```
 """
 function sWeights(
@@ -135,16 +140,65 @@ function sWeights(
     pdfB::UnivariateDistribution,
     n_signal::Real,
     n_background::Real,
+    xs::AbstractVector
 )
     N = n_signal + n_background
     f_signal = n_signal / N
-    return sWeights(pdfS, pdfB, f_signal)
+    return sWeights(pdfS, pdfB, f_signal, xs)
 end
 
 """
-    sWeights_covariance(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+    Wmatrix(sP::sPlot)
 
-Return the covariance matrix of the fitted yields as used in the sPlot formalism.
+Get the weight matrix from an sPlot object.
+
+# Arguments
+- `sP`: An `sPlot` object.
+
+# Returns
+- `W`: The sPlot weight matrix.
+
+# Example
+```julia
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1)
+model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
+sP = sPlot(model)
+W = Wmatrix(sP)
+```
+"""
+function Wmatrix(sP::sPlot)
+    return inv(sP.inv_W)
+end
+
+"""
+    inv_W(sP::sPlot)
+
+Get the inverse weight matrix (covariance matrix) from an sPlot object.
+
+# Arguments
+- `sP`: An `sPlot` object.
+
+# Returns
+- `inv_W`: The inverse weight matrix.
+
+# Example
+```julia
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1)
+model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
+sP = sPlot(model)
+cov = inv_W(sP)
+```
+"""
+function inv_W(sP::sPlot)
+    return sP.inv_W
+end
+
+"""
+    inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+
+Return the covariance matrix for a two-component mixture model.
 
 # Arguments
 - `pdfS`: Signal model as a `UnivariateDistribution`.
@@ -152,68 +206,43 @@ Return the covariance matrix of the fitted yields as used in the sPlot formalism
 - `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
 
 # Returns
-- `cov::Matrix{Float64}`: 2×2 covariance matrix of the yields (signal, background).
+- `cov`: Covariance matrix of the yields.
 
 # Example
 ```julia
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
-cov = sWeights_covariance(pdfS, pdfB, 0.4)
-println(cov)
+cov = inv_W(pdfS, pdfB, 0.4)
 ```
 """
-function sWeights_covariance(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
-    f(x) = fraction_signal * pdf(pdfS, x) + (1 - fraction_signal) * pdf(pdfB, x)
-    W = Wmatrix(pdfS, pdfB, f)
-    return inv(W)
+function inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+    model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
+    sP = sPlot(model)
+    return inv_W(sP)
 end
 
 """
-    sWeights_vector(pdfS, pdfB, fraction_signal, xs)
-
-Compute the sWeights for arrays of data points.
-
-# Arguments
-- `pdfS`: Signal model as a `UnivariateDistribution`.
-- `pdfB`: Background model as a `UnivariateDistribution`.
-- `fraction_signal`: Estimated fraction of signal in the total data (between 0 and 1).
-- `xs`: Vector of data points.
-
-# Returns
-- `(ws_signal, ws_background)`: Tuple of vectors containing the sWeights for signal and background at each point in `xs`.
-
-# Example
-```julia
-pdfS = Normal(0, 1)
-pdfB = Normal(5, 1.5)
-xs = [-2.0, 0.0, 5.0, 8.0]
-ws, wb = sWeights_vector(pdfS, pdfB, 0.4, xs)
-println(ws)
-```
-"""
-function sWeights_vector(pdfS, pdfB, fraction_signal, xs::AbstractVector)
-    wS, wB = sWeights(pdfS, pdfB, fraction_signal)
-    return (wS.(xs), wB.(xs))
-end
-
-"""
-    check_Wmatrix_condition(W::AbstractMatrix)
+    check_Wmatrix_condition(sP::sPlot)
 
 Warn if the sPlot weight matrix is ill-conditioned, which may indicate numerical instability.
 
 # Arguments
-- `W`: The sPlot weight matrix (typically 2×2).
+- `sP`: An `sPlot` object.
 
 # Returns
-- `condW::Float64`: The condition number of `W`.
+- `condW::Float64`: The condition number of the weight matrix.
 
 # Example
 ```julia
-W = [1.0 0.1; 0.1 1.0]
-condW = check_Wmatrix_condition(W)
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1)
+model = MixtureModel([pdfS, pdfB], [0.6, 0.4])
+sP = sPlot(model)
+condW = check_Wmatrix_condition(sP)
 ```
 """
-function check_Wmatrix_condition(W::AbstractMatrix)
+function check_Wmatrix_condition(sP::sPlot)
+    W = Wmatrix(sP)
     condW = cond(W)
     if condW > 1e8
         @warn "Weight matrix is ill-conditioned (condition number = $condW). Results may be unstable."
@@ -222,9 +251,56 @@ function check_Wmatrix_condition(W::AbstractMatrix)
 end
 
 """
+    sWeights_vector_with_variance(sP::sPlot, xs)
+
+Compute the sWeights and their variances for data points using the sPlot object.
+
+# Arguments
+- `sP`: An `sPlot` object.
+- `xs`: Vector of data points.
+
+# Returns
+- `(ws_signal, ws_background, var_signal, var_background)`: Tuple of vectors containing the sWeights and their variances for each component.
+
+# Example
+```julia
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
+model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
+sP = sPlot(model)
+xs = [-2.0, 0.0, 5.0, 8.0]
+ws, wb, vs, vb = sWeights_vector_with_variance(sP, xs)
+```
+"""
+function sWeights_vector_with_variance(sP::sPlot, xs)
+    weights = sWeights(sP, xs)
+    wS, wB = eachcol(weights)
+    
+    # Variance calculation
+    V = sP.inv_W
+    comps = sP.model.components
+    prior_weights = sP.model.prior.p
+    f(x) = sum(prior_weights[i] * pdf(comps[i], x) for i in eachindex(comps))
+    
+    function variance(component_idx, x)
+        ps = [pdf(comp, x) for comp in comps]
+        v = 0.0
+        for j in eachindex(comps), k in eachindex(comps)
+            v += V[component_idx, j] * V[component_idx, k] * ps[j] * ps[k]
+        end
+        return v / (f(x)^2)
+    end
+    
+    vS = [variance(1, x) for x in xs]
+    vB = [variance(2, x) for x in xs]
+    
+    return (wS, wB, vS, vB)
+end
+
+"""
     sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
 
-Compute the sWeights and their variances for arrays of data points.
+Compute the sWeights and their variances for data points using individual distributions.
 
 # Arguments
 - `pdfS`: Signal model as a `UnivariateDistribution`.
@@ -233,12 +309,7 @@ Compute the sWeights and their variances for arrays of data points.
 - `xs`: Vector of data points.
 
 # Returns
-- `(ws_signal, ws_background, var_signal, var_background)`: Tuple of vectors containing the sWeights and their variances for signal and background at each point in `xs`.
-
-# Notes
-The variance is computed according to the sPlot formalism:
-``\\mathrm{Var}[w_i(x)] = \\sum_{j,k} V_{ij} V_{ik} \\frac{p_j(x) p_k(x)}{f(x)^2}``
-where ``V`` is the covariance matrix of the yields, ``p_j(x)`` are the PDFs, and ``f(x)`` is the total PDF.
+- `(ws_signal, ws_background, var_signal, var_background)`: Tuple of vectors containing the sWeights and their variances.
 
 # Example
 ```julia
@@ -246,45 +317,12 @@ pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 xs = [-2.0, 0.0, 5.0, 8.0]
 ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
-println(ws)
-println(vs)
 ```
 """
-function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs::AbstractVector)
-    # PDFs
-    pS(x) = pdf(pdfS, x)
-    pB(x) = pdf(pdfB, x)
-    f(x) = fraction_signal * pS(x) + (1 - fraction_signal) * pB(x)
-    # Covariance matrix
-    V = sWeights_covariance(pdfS, pdfB, fraction_signal)
-    # sWeight coefficients (alpha)
-    W = Wmatrix(pdfS, pdfB, f)
-    α = inv(W)
-    αS = α[:, 1] ./ abs(sum(α[:, 1]))
-    αB = α[:, 2] ./ abs(sum(α[:, 2]))
-    # sWeight functions
-    numerator_s(x) = αS[1] * pS(x) + αS[2] * pB(x)
-    numerator_b(x) = αB[1] * pS(x) + αB[2] * pB(x)
-    weight_signal(x) = numerator_s(x) / f(x) * fraction_signal
-    weight_background(x) = numerator_b(x) / f(x) * (1 - fraction_signal)
-    # Variance functions
-    function variance(i, x)
-        # i = 1 for signal, 2 for background
-        ps = [pS(x), pB(x)]
-        v = 0.0
-        for j ∈ 1:2, k ∈ 1:2
-            v += V[i, j] * V[i, k] * ps[j] * ps[k]
-        end
-        return v / (f(x)^2)
-    end
-    var_signal(x) = variance(1, x)
-    var_background(x) = variance(2, x)
-    # Vectorized
-    ws = weight_signal.(xs)
-    wb = weight_background.(xs)
-    vs = var_signal.(xs)
-    vb = var_background.(xs)
-    return (ws, wb, vs, vb)
+function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
+    model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
+    sP = sPlot(model)
+    return sWeights_vector_with_variance(sP, xs)
 end
 
 """
@@ -302,6 +340,7 @@ then compute sWeights and their variances for each event.
 
 # Returns
 - `result`: Optim.jl fit result.
+- `sP`: The fitted sPlot object.
 - `n_signal`, `n_background`: Fitted yields.
 - `cov`: Covariance matrix of yields.
 - `ws`, `wb`: sWeights for signal and background (vectors).
@@ -312,7 +351,11 @@ then compute sWeights and their variances for each event.
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 data = vcat(rand(pdfS, 40), rand(pdfB, 60))
-result, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
+result, sP, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
+# Use sP for further sWeight calculations:
+wS, wB = sWeights(sP, data) |> eachcol
+fS(x) = sWeights(sP, [x])[1,1]
+fB(x) = sWeights(sP, [x])[1,2]
 ```
 """
 function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
@@ -332,27 +375,62 @@ function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
 
     # Fit using extended NLL
     result = fit_enll(model, init_pars, data; support = support)
-
     nS, nB = Optim.minimizer(result) |> Tuple{Float64, Float64}
 
-    # Redefine the NLL objective for Hessian calculation
-    nll(p) = extended_nll(model, p, data; support = support)
+    # Create sPlot object with fitted fractions
+    f_signal = nS / (nS + nB)
+    model_fitted = MixtureModel([pdfS, pdfB], [f_signal, 1 - f_signal])
+    sP = sPlot(model_fitted)
 
     # Covariance estimate (inverse Hessian)
+    nll(p) = extended_nll(model, p, data; support = support)
     hess = ForwardDiff.hessian(nll, [nS, nB])
     cov = inv(hess)
 
-    # Compute sWeights and variances
-    f_signal = nS / (nS + nB)
-    ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, f_signal, data)
+    # Compute sWeights and variances using the sPlot object
+    ws, wb, vs, vb = sWeights_vector_with_variance(sP, data)
 
-    return result, nS, nB, cov, ws, wb, vs, vb
+    return result, sP, nS, nB, cov, ws, wb, vs, vb
+end
+
+"""
+    sWeights_dataframe(sP::sPlot, xs)
+
+Return a DataFrame with data, sWeights, and variances for each event using the sPlot object.
+
+# Arguments
+- `sP`: An `sPlot` object.
+- `xs`: Vector of data points.
+
+# Returns
+- `df`: DataFrame with columns: :x, :ws_signal, :ws_background, :var_signal, :var_background
+
+# Example
+```julia
+using DataFrames
+pdfS = Normal(0, 1)
+pdfB = Normal(5, 1.5)
+model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
+sP = sPlot(model)
+xs = [-2.0, 0.0, 5.0, 8.0]
+df = sWeights_dataframe(sP, xs)
+```
+"""
+function sWeights_dataframe(sP::sPlot, xs)
+    ws, wb, vs, vb = sWeights_vector_with_variance(sP, xs)
+    return DataFrame(
+        x = xs,
+        ws_signal = ws,
+        ws_background = wb,
+        var_signal = vs,
+        var_background = vb,
+    )
 end
 
 """
     sWeights_dataframe(pdfS, pdfB, fraction_signal, xs)
 
-Return a DataFrame with data, sWeights, and variances for each event.
+Return a DataFrame with data, sWeights, and variances for each event using individual distributions.
 
 # Arguments
 - `pdfS`, `pdfB`: Signal and background UnivariateDistributions.
@@ -372,14 +450,9 @@ df = sWeights_dataframe(pdfS, pdfB, 0.4, xs)
 ```
 """
 function sWeights_dataframe(pdfS, pdfB, fraction_signal, xs)
-    ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
-    return DataFrame(
-        x = xs,
-        ws_signal = ws,
-        ws_background = wb,
-        var_signal = vs,
-        var_background = vb,
-    )
+    model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
+    sP = sPlot(model)
+    return sWeights_dataframe(sP, xs)
 end
 
 """

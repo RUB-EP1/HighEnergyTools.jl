@@ -43,7 +43,8 @@ include("utils.jl")
 export WithData, curvehistpulls
 include("plotting_recipe.jl")
 
-export Wmatrix, sWeights
+export sPlot, sWeights
+export Wmatrix, inv_W
 export sWeights_vector, sWeights_covariance
 export sWeights_vector_with_variance
 export check_Wmatrix_condition
