@@ -4,24 +4,6 @@ using Random
 using Distributions
 using FHist
 
-@testset "chi2" begin
-    h = Hist1D(rand(Normal(0, 1), 1000); binedges = range(start = -3, stop = 3, step = 0.5))
-    d = Normal(0, 1)
-    χ² = chi2(h, d)
-    @test χ² ≥ 0
-    #
-    model(x) = pdf(d, x) * FHist.integral(h; width = true)
-    χ²2 = chi2(h, model)
-    @test isapprox(χ², χ²2; atol = 1e-8)
-    # Test with zero-count bins
-    h2 = Hist1D(
-        vcat(randn(1000), fill(10.0, 10));
-        binedges = range(start = -3, stop = 11, step = 0.5),
-    )
-    χ²3 = chi2(h2, d)
-    @test χ²3 ≥ 0
-end
-
 @testset "Simple fitting" begin
     init_pars = (; μ = 0.35, σ = 0.8, a = 1.0)
     support = (-4.0, 4.0)

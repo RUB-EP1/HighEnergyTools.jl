@@ -27,7 +27,6 @@ export sample_rejection, sample_inversion
 include("sampling.jl")
 
 export fit_enll, extended_nll
-export chi2
 export nll, fit_nll
 include("fitting.jl")
 
