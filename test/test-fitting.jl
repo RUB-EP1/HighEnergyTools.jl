@@ -21,13 +21,16 @@ end
 
 #
 anka = Anka(1.1, 3.3)
-init_pars = ComponentArray(sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
+init_pars =
+    ComponentArray(sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
 m = build_model(anka, init_pars)
 
 Random.seed!(11122)
 data = rand(m, 1000)
 
-fit_res = fit_nll(anka, data, init_pars)
+fit_res = fit_nll(data, init_pars) do p
+    build_model(anka, p)
+end
 best_pars = fit_res.minimizer
 #
 @testset "Fitting NLL" begin

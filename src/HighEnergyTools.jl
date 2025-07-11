@@ -13,8 +13,8 @@ using Distributions
 using LinearAlgebra
 using ForwardDiff
 #
-using Plots, RecipesBase
-using Plots.PlotMeasures: mm
+using RecipesBase
+const mm = 1.0
 
 import Distributions: pdf
 export pdf

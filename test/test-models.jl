@@ -27,8 +27,9 @@ model = build_model(anka, pars)
 # end
 
 @testset "Anka model" begin
-    @test model.components[1] isa Truncated{<:Normal}
-    @test model.components[2] isa LocationScale{A, B, <:DistributionsHEP.StandardChebyshev} where {A, B}
+    @test model.components[1] isa Truncated{<:Normal
+    @test model.components[2] isa
+          LocationScale{A,B,<:DistributionsHEP.StandardChebyshev} where {A,B}
     @test model.prior.p[1] ≈ 0.5
     @test model.prior.p[2] ≈ 0.5
 end
@@ -56,7 +57,7 @@ model = build_model(frida, pars)
 
 @testset "Frida model" begin
     @test model.components[1] isa Truncated{<:Normal}
-    @test model.components[2] isa Truncated{<:Normal}
-    @test model.components[3] isa LocationScale{A, B, <:DistributionsHEP.StandardChebyshev} where {A, B}
+    @test model.components[2] isa Truncated{<:Normal
+    @test model.components[3] isa
+          LocationScale{A,B,<:DistributionsHEP.StandardChebyshev} where {A,B}
 end
-

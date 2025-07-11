@@ -131,26 +131,73 @@ function fit_enll(
 end
 
 
+
 """
-    fit_nll(model_builder, data, init_pars; alg = NelderMead(), kw...)
+    nll(d, data)
+
+Calculate the negative log likelihood (NLL) for a given distribution and dataset.
+
+# Arguments
+- `d`: A distribution object that supports the `pdf` method (e.g., from Distributions.jl).
+- `data`: A collection of data points.
+
+# Returns
+- `nll_value`: The negative log likelihood value for the given distribution and data.
+
+If any `pdf(d, x)` value is non-positive, it is replaced with a large negative value (-1e10) to avoid numerical issues.
+
+# Example
+```julia
+using HighEnergyTools
+using HighEnergyTools.Distributions
+
+# Create a normal distribution
+d = Normal(0.0, 1.0)
+
+# Generate some data
+data = rand(d, 100)
+
+# Calculate negative log likelihood
+nll_value = nll(d, data)
+```
+
+# See also
+- [`fit_nll`](@ref): Fit model parameters using negative log likelihood
+- [`extended_nll`](@ref): Calculate extended negative log likelihood
+"""
+function nll(d, data)
+    _sum_log = sum(data) do x
+        v = pdf(d, x)
+        # shell we @warn when pdf < 0?
+        v > 0 ? log(v) : -1e10
+    end
+    return -_sum_log
+end
+
+"""
+    fit_nll(pars2model, data, init_pars; alg = NelderMead(), kw...)
 
 Fit the model parameters using the negative log likelihood (NLL) method.
 
 # Arguments
-- `model_builder`: A function that builds a model from parameters.
+- `pars2model`: A function that converts parameters to a model.
 - `data`: A collection of data points.
 - `init_pars`: Initial parameters for the model.
 
 # Example
 
 ```julia
-using Plots, ComponentArray, HighEnergyTools
+using HighEnergyTools.ComponentArray
+using HighEnergyTools
+using Plots
 theme(:boxed)
 
 anka = Anka(1.1, 3.3)
 init_pars = ComponentArray(sig = (μ = 2.2, σ = 0.06), bgd = (coeffs = [1.5, 1.1],), logfB = 0.0)
 
-fit_res = fit_nll(anka, data, init_pars)
+fit_res = fit_nll(data, init_pars) do p
+    build_model(anka, p)
+end
 best_pars = fit_res.minimizer
 best_model = build_model(anka, best_pars)
 stephist(data; normalize = true, ylims = (0, :auto))
@@ -158,16 +205,7 @@ plot!(x -> pdf(best_model, x), 1.1, 3.3, ylims = (0, :auto))
 ```
 
 """
-function nll(d, data)
-    _sumlog = sum(data) do x
-        v = pdf(d, x)
-        # shell we @warn when pdf < 0?
-        v > 0 ? log(v) : -1e10
-    end
-    return -_sumlog
-end
-
-function fit_nll(model_builder, data, init_pars; alg = NelderMead(), kw...)
-    objective(p) = nll(build_model(model_builder, p), data)
+function fit_nll(pars2model, data, init_pars; alg = NelderMead(), kw...)
+    objective(p) = nll(pars2model(p), data)
     optimize(objective, init_pars, alg; kw...)
 end
