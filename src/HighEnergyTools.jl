@@ -13,6 +13,7 @@ using Distributions
 using LinearAlgebra
 using ForwardDiff
 #
+using Plots
 using RecipesBase
 const mm = 1.0
 

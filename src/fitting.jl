@@ -135,7 +135,7 @@ end
 """
     nll(d, data)
 
-Calculate the negative log likelihood (NLL) for a given distribution and dataset.
+Calculate the negative log likelihood (NLL) for a given probability density function and dataset.
 
 # Arguments
 - `d`: A distribution object that supports the `pdf` method (e.g., from Distributions.jl).
@@ -165,7 +165,7 @@ nll_value = nll(d, data)
 - [`fit_nll`](@ref): Fit model parameters using negative log likelihood
 - [`extended_nll`](@ref): Calculate extended negative log likelihood
 """
-function nll(d, data)
+function nll(d, data; support = extrema(data))
     _sum_log = sum(data) do x
         v = pdf(d, x)
         # shell we @warn when pdf < 0?
@@ -178,9 +178,10 @@ end
     fit_nll(pars2model, data, init_pars; alg = NelderMead(), kw...)
 
 Fit the model parameters using the negative log likelihood (NLL) method.
+For models that are not normalized, see [`fit_enll`](@ref).
 
 # Arguments
-- `pars2model`: A function that converts parameters to a model.
+- `pars2model`: A probability density function that converts parameters to a model.
 - `data`: A collection of data points.
 - `init_pars`: Initial parameters for the model.
 
@@ -205,7 +206,9 @@ plot!(x -> pdf(best_model, x), 1.1, 3.3, ylims = (0, :auto))
 ```
 
 """
-function fit_nll(pars2model, data, init_pars; alg = NelderMead(), kw...)
-    objective(p) = nll(pars2model(p), data)
+function fit_nll(pars2model, data, init_pars; alg = NelderMead(), support = extrema(data), kw...)
+    # check if data is within limits
+    filtered_data = _data_in_support(data, support)
+    objective(p) = nll(pars2model(p), filtered_data)
     optimize(objective, init_pars, alg; kw...)
 end

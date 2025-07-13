@@ -106,14 +106,13 @@ scatter!(sp = 2, bincenters(h_pull), h_pull.bincounts, yerror = 1, xerror = dx)
         xticks := false
         xguide := ""
         ylimits := (0, :auto)
-        bottom_margin := -4.5mm
         markercolor --> :black
         guidefontvalign := :top
         seriestype := :scatter
         subplot := 1
         yerror := binerrors(h)
         xerror := dx
-        bincenters(h), h.bincounts
+        bincenters(h), bincounts(h)
     end
 
     # pull
@@ -124,7 +123,6 @@ scatter!(sp = 2, bincenters(h_pull), h_pull.bincounts, yerror = 1, xerror = dx)
         [0.0]
     end
     @series begin
-        bottom_margin := 0mm
         markercolor --> :black
         yguide := "Pull"
         guidefontvalign := :center
