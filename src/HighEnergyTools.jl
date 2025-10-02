@@ -46,6 +46,8 @@ export wMatrix, inv_W
 export sWeights_vector, sWeights_covariance
 export sWeights_vector_with_variance
 export check_wMatrix_condition
+export sWeights_general, sWeights_multidimensional
+export check_sweights_closure
 include("sweights.jl")
 
 export fit_and_sWeights

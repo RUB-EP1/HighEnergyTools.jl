@@ -319,3 +319,212 @@ function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
     sP = sPlot(model)
     return sWeights_vector_with_variance(sP, xs)
 end
+
+"""
+    sWeights_general(yields::AbstractVector, shape_values::AbstractMatrix)
+
+Compute sWeights for a general mixture model with arbitrary number of components.
+This is the core generalized implementation that works for both 1D and multi-dimensional cases.
+
+# Arguments
+- `yields`: Vector of fitted component yields [N₁, N₂, ..., Nₖ]
+- `shape_values`: Matrix where shape_values[i,j] = Pⱼ(xᵢ) is the j-th component's 
+  shape function value (without yield normalization) at the i-th data point
+
+# Returns
+- `(weights, covariance)`: Tuple containing:
+  - `weights`: Matrix of size (n_events, n_components) with sWeights
+  - `covariance`: Covariance matrix of the yields (V matrix from Pivk & Le Diberder)
+
+# Algorithm
+Implements the Pivk & Le Diberder method (NIM A555 (2005) 356):
+- V⁻¹ᵢⱼ = Σₙ Pᵢ(xₙ)Pⱼ(xₙ)/F(xₙ)² where F(x) = Σₖ NₖPₖ(x)
+- wᵢ(n) = Σⱼ Vᵢⱼ Pⱼ(xₙ)/F(xₙ)
+- Ensures Σₙ wᵢ(n) = Nᵢ (closure condition)
+
+# Example
+```julia
+# For a 2-component mixture with 100 events
+yields = [60.0, 40.0]  # fitted yields
+shape_values = rand(100, 2)  # shape values at each event
+weights, cov = sWeights_general(yields, shape_values)
+```
+"""
+function sWeights_general(yields::AbstractVector, shape_values::AbstractMatrix)
+    n_events, n_components = size(shape_values)
+    
+    if length(yields) != n_components
+        throw(ArgumentError("Number of yields ($(length(yields))) must match number of components ($n_components)"))
+    end
+    
+    # Build inverse covariance matrix V⁻¹
+    V_inv = zeros(Float64, n_components, n_components)
+    
+    @inbounds for event_idx in 1:n_events
+        # Calculate total model value F(x) = Σₖ NₖPₖ(x)
+        F_total = 0.0
+        for k in 1:n_components
+            F_total += yields[k] * shape_values[event_idx, k]
+        end
+        
+        if F_total <= 1e-12
+            continue  # Skip events with negligible probability
+        end
+        
+        inv_F_squared = 1.0 / (F_total * F_total)
+        
+        # Accumulate V⁻¹ᵢⱼ = Σₙ Pᵢ(xₙ)Pⱼ(xₙ)/F(xₙ)²
+        for i in 1:n_components
+            Pi = shape_values[event_idx, i]
+            for j in i:n_components
+                val = Pi * shape_values[event_idx, j] * inv_F_squared
+                V_inv[i, j] += val
+                if j != i
+                    V_inv[j, i] += val  # Symmetrize
+                end
+            end
+        end
+    end
+    
+    # Invert to get covariance matrix V
+    V = try
+        inv(V_inv)
+    catch err
+        @warn "Covariance matrix inversion failed; using pseudo-inverse" exception=err
+        pinv(V_inv)
+    end
+    
+    # Ensure numerical symmetry
+    V .= (V .+ V') ./ 2
+    
+    # Compute sWeights: wᵢ(n) = Σⱼ Vᵢⱼ Pⱼ(xₙ)/F(xₙ)
+    weights = zeros(Float64, n_events, n_components)
+    
+    @inbounds for event_idx in 1:n_events
+        # Calculate total model value F(x)
+        F_total = 0.0
+        for k in 1:n_components
+            F_total += yields[k] * shape_values[event_idx, k]
+        end
+        
+        if F_total <= 1e-12
+            continue  # Leave weights as zero for negligible events
+        end
+        
+        inv_F = 1.0 / F_total
+        
+        # Compute weights: wᵢ = (Σⱼ Vᵢⱼ Pⱼ) / F
+        for i in 1:n_components
+            weight_sum = 0.0
+            for j in 1:n_components
+                weight_sum += V[i, j] * shape_values[event_idx, j]
+            end
+            weights[event_idx, i] = weight_sum * inv_F
+        end
+    end
+    
+    return (weights, V)
+end
+
+"""
+    sWeights_multidimensional(yields::AbstractVector, shape_functions::AbstractVector{<:Function}, data_points::AbstractMatrix)
+
+Compute sWeights for multi-dimensional data using component shape functions.
+
+# Arguments
+- `yields`: Vector of fitted component yields [N₁, N₂, ..., Nₖ]
+- `shape_functions`: Vector of functions where shape_functions[i](x) evaluates the i-th component's
+  normalized shape function at point x (x can be a vector for multi-dimensional case)
+- `data_points`: Matrix where each row is a data point (n_events × n_dimensions)
+
+# Returns
+- `(weights, covariance)`: Tuple containing sWeights matrix and covariance matrix
+
+# Example
+```julia
+# 2D phi-phi analysis example
+phi_signal(m1, m2) = convoluted_phi_signal_pdf(m1, ...) * convoluted_phi_signal_pdf(m2, ...)
+phi_bg(m1, m2) = convoluted_phi_signal_pdf(m1, ...) * kk_background_pdf(m2, ...)
+# ... define other components
+
+shape_funcs = [
+    (x) -> phi_signal(x[1], x[2]),
+    (x) -> phi_bg(x[1], x[2]),
+    # ... other components
+]
+
+yields = [N_phiphi, N_phi1kk2, N_kk1phi2, N_kkkk]
+data = [m_phi1 m_phi2]  # n_events × 2 matrix
+
+weights, cov = sWeights_multidimensional(yields, shape_funcs, data)
+```
+"""
+function sWeights_multidimensional(yields::AbstractVector, shape_functions::AbstractVector{<:Function}, data_points::AbstractMatrix)
+    n_events, n_dims = size(data_points)
+    n_components = length(shape_functions)
+    
+    if length(yields) != n_components
+        throw(ArgumentError("Number of yields ($(length(yields))) must match number of shape functions ($n_components)"))
+    end
+    
+    # Evaluate shape functions at all data points
+    shape_values = zeros(Float64, n_events, n_components)
+    
+    for event_idx in 1:n_events
+        data_point = data_points[event_idx, :]
+        for comp_idx in 1:n_components
+            shape_values[event_idx, comp_idx] = shape_functions[comp_idx](data_point)
+        end
+    end
+    
+    # Use the general implementation
+    return sWeights_general(yields, shape_values)
+end
+
+"""
+    check_sweights_closure(weights::AbstractMatrix, yields::AbstractVector; rtol::Float64=1e-3)
+
+Check the closure property of sWeights: Σₙ wᵢ(n) ≈ Nᵢ for each component i.
+
+# Arguments
+- `weights`: sWeights matrix (n_events × n_components)
+- `yields`: Vector of fitted yields
+- `rtol`: Relative tolerance for the closure check
+
+# Returns
+- `closure_test`: NamedTuple with fields:
+  - `passed`: Boolean indicating if all components pass the closure test
+  - `relative_errors`: Vector of relative errors for each component
+  - `sums`: Vector of actual sums Σₙ wᵢ(n) for each component
+
+# Example
+```julia
+weights, _ = sWeights_general(yields, shape_values)
+closure = check_sweights_closure(weights, yields)
+if !closure.passed
+    @warn "sWeights closure test failed" closure.relative_errors
+end
+```
+"""
+function check_sweights_closure(weights::AbstractMatrix, yields::AbstractVector; rtol::Float64=1e-3)
+    n_events, n_components = size(weights)
+    
+    if length(yields) != n_components
+        throw(ArgumentError("Number of yields must match number of components"))
+    end
+    
+    # Calculate sums for each component
+    sums = [sum(weights[:, i]) for i in 1:n_components]
+    
+    # Calculate relative errors
+    relative_errors = abs.((sums .- yields) ./ yields)
+    
+    # Check if all components pass the tolerance test
+    passed = all(relative_errors .< rtol)
+    
+    return (
+        passed = passed,
+        relative_errors = relative_errors,
+        sums = sums
+    )
+end
