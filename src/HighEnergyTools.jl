@@ -14,7 +14,8 @@ using LinearAlgebra
 using ForwardDiff
 #
 using Plots.RecipesBase
-const mm = 1.0
+import Plots: grid
+import Plots.PlotMeasures: mm
 
 import Distributions: pdf
 export pdf

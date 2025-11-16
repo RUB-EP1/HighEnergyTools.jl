@@ -22,3 +22,16 @@ using HighEnergyTools
 - [Distributions.jl](https://github.com/JuliaStats/Distributions.jl)
 - [NumericalDistributions.jl](https://github.com/mmikhasenko/NumericalDistributions.jl)
 - [AlgebraPDF.jl](https://github.com/mmikhasenko/AlgebraPDF.jl)
+
+## Tesing
+
+The unit tests in `test/runtests.jl` are run with the following command:
+```julia
+import Pkg
+Pkg.test("HighEnergyTools")
+```
+
+Run the visual tests in `test/test-visual.jl` by running the file in REPL.
+```julia
+include("test/test-visual.jl")
+```
