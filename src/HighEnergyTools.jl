@@ -13,7 +13,7 @@ using Distributions
 using LinearAlgebra
 using ForwardDiff
 #
-using RecipesBase
+using Plots.RecipesBase
 const mm = 1.0
 
 import Distributions: pdf
