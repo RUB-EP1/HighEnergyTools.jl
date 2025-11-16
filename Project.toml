@@ -4,7 +4,7 @@ authors = ["Mikhail Mikhasenko <mikhail.mikhasenko@cern.ch>",
     "Marian Stahl <marian.stahl@cern.ch>",
     "Ilya Segal <ilya.segal@@cern.ch>",
     "Dhruvanshu Parmar <dhruvanshu.mahesh.parmar@cern.ch>"]
-version = "0.6.0"
+version = "0.6.1"
 
 [deps]
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
