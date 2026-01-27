@@ -23,7 +23,7 @@ struct sPlot{M, T}
         comps = model.components
         weights = model.prior.p
         f(x) = sum(weights[i] * pdf(comps[i], x) for i in eachindex(comps))
-        lims = isnothing(support) ? (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps])) : support
+        lims = isnothing(support) ? (minimum([minimum(Distributions.support(c)) for c in comps]), maximum([maximum(Distributions.support(c)) for c in comps])) : support
         ϵ = 1e-12
         W = [quadgk(x -> pdf(ci, x) * pdf(cj, x) / max(f(x), ϵ), lims...)[1]
              for ci in comps, cj in comps]
