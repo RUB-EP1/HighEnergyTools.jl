@@ -152,7 +152,7 @@ end
 end
 
 @testset "sWeights from array of pdfs" begin
-    pdfs = [Normal(0,1),Normal(3,0.5),Normal(5,0.001)]
+    pdfs = [Normal(0,1),Normal(3,0.5),Normal(5,0.1)]
     fractions = [0.4,0.55,0.05]
     xs = [-2.0,0.0,3.0,-7.0,5.0,8.0]
     support = (-10,10)

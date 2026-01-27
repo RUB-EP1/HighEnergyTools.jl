@@ -158,7 +158,7 @@ Compute the sWeight functions for set of pdf components using the fitted fractio
 
 # Example
 ```julia
-pdfs = [Normal(0,1),Normal(3,1.5),Normal(5,0.001)]
+pdfs = [Normal(0,1),Normal(3,1.5),Normal(5,0.1)]
 fractions = [0.4,0.55,0.05]
 support = (-10,10)
 x = vcat(rand(pdfa[1], 40), rand(pdfs[2], 55), rand(pdfs[3],5))
