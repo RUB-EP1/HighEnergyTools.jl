@@ -73,7 +73,7 @@ function sWeights(sP::sPlot, xs::AbstractVector)
 end
 
 """
-    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real, xs::AbstractVector)
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real, xs::AbstractVector;support=nothing)
 Computes the sWeight functions for signal and background components
 based on individual distributions.
 # Arguments
@@ -107,7 +107,7 @@ function sWeights(
 end
 
 """
-    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, n_signal::Real, n_background::Real, xs::AbstractVector)
+    sWeights(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, n_signal::Real, n_background::Real, xs::AbstractVector; support=nothing)
 
 Compute the sWeight functions for signal and background components using the absolute fitted yields.
 
@@ -228,7 +228,7 @@ function inv_W(sP::sPlot)
 end
 
 """
-    inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+    inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real;support=nothing)
 
 Return the covariance matrix for a two-component mixture model.
 
@@ -292,7 +292,7 @@ Compute the sWeights and their variances for data points using the sPlot object.
 - `xs`: Vector of data points.
 
 # Returns
-- `(ws_signal, ws_background, var_signal, var_background)`: Tuple of vectors containing the sWeights and their variances for each component.
+- `weights,variances`: Two vectors containing vectors of sWeights and variance for each component.
 
 # Example
 ```julia
@@ -301,13 +301,10 @@ pdfB = Normal(5, 1.5)
 model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
 sP = sPlot(model)
 xs = [-2.0, 0.0, 5.0, 8.0]
-ws, wb, vs, vb = sWeights_vector_with_variance(sP, xs)
+W,V = sWeights_vector_with_variance(sP, xs)
 ```
 """
 function sWeights_vector_with_variance(sP::sPlot, xs)
-    weights = sWeights(sP, xs)
-    wS, wB = eachcol(weights)
-
     # Variance calculation
     V = sP.inv_W
     comps = sP.model.components
@@ -323,14 +320,14 @@ function sWeights_vector_with_variance(sP::sPlot, xs)
         return v / (f(x)^2)
     end
 
-    vS = [variance(1, x) for x in xs]
-    vB = [variance(2, x) for x in xs]
+    weights = [sWeights(sP, xs)[:,i] for i in eachindex(comps)]
+    variances = [[variance(i,x) for x in xs] for i in eachindex(comps)]
 
-    return (wS, wB, vS, vB)
+    return weights,variances
 end
 
 """
-    sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
+    sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs;support=nothing)
 
 Compute the sWeights and their variances for data points using individual distributions.
 
@@ -341,14 +338,14 @@ Compute the sWeights and their variances for data points using individual distri
 - `xs`: Vector of data points.
 
 # Returns
-- `(ws_signal, ws_background, var_signal, var_background)`: Tuple of vectors containing the sWeights and their variances.
+- `weights,variances`: Two vectors containing vectors of sWeights and variance for each component.
 
 # Example
 ```julia
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 xs = [-2.0, 0.0, 5.0, 8.0]
-ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
+W, V = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
 ```
 """
 function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs;support=nothing)

@@ -127,7 +127,7 @@ end
 
     # Create sPlot object
     model = MixtureModel([pdfS, pdfB], [f_signal, 1 - f_signal])
-    sP = sPlot(model)
+    sP = sPlot(model)i
 
     # Test sWeights function access
     fS(x) = sWeights(sP, [x])[1, 1]
@@ -149,6 +149,29 @@ end
     # Test condition number
     condW = check_wMatrix_condition(sP)
     @test condW > 0
+end
+
+@testset "sWeights from functions" begin
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1.5)
+    nS, nB = 40, 60
+    xs = [-2.0, 0.0, 5.0, 8.0]
+    f_signal = nS / (nS+nB)
+
+    #Get sWeights from function taking fraction as input
+    wS_from_fraction,wB_from_fraction = sWeights(pdfS,pdfB,f_signal,xs) |> eachcol
+
+    #Get sWeights from function taking yields as input
+    wS_from_yields,wB_from_yields = sWeights(pdfS,pdfB,nS,nB,xs) |> eachcol
+
+    #Compare the two weight arrays
+    @test wS_from_fraction == wS_from_yields
+    @test wS_from_fraction == wS_from_yields
+
+    #Test covariance matrix, calculated using pdfs and f_signal
+    cov = inv_W(pdfS,pdfB,f_signal,xs)
+    @test size(cov) == (2,2)
+    @test cov[1,1] > 0
 end
 
 @testset "sWeights from array of pdfs" begin
@@ -183,7 +206,9 @@ end
     xs = [-2.0, 0.0, 5.0, 8.0]
 
     # Test with individual distributions
-    ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
+    W,V = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
+    (ws,wb) = W
+    (vs,vb) = V
     @test length(ws) == length(xs)
     @test length(vs) == length(xs)
     @test all(vs .>= 0)
