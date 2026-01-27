@@ -220,7 +220,9 @@ end
     # Test with sPlot object
     model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
     sP = sPlot(model)
-    ws2, wb2, vs2, vb2 = sWeights_vector_with_variance(sP, xs)
+    W2,V2 = sWeights_vector_with_variance(sP xs)
+    (ws2,wb2) = W2
+    (vs2,vb2) = V2
     @test ws ≈ ws2 atol = 1e-10
     @test wb ≈ wb2 atol = 1e-10
     @test vs ≈ vs2 atol = 1e-10
