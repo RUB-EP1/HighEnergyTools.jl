@@ -151,6 +151,32 @@ end
     @test condW > 0
 end
 
+@testset "sWeights from array of pdfs" begin
+    pdfs = [Normal(0,1),Normal(3,0.5),Normal(5,0.001)]
+    fractions = [0.4,0.55,0.05]
+    xs = [-2.0,0.0,3.0,-7.0,5.0,8.0]
+    support = (-10,10)
+
+    # Create sPlot object
+    model = MixtureModel(pdfs,fractions)
+    sP = sPlot(model;support=support)
+
+    # Test sPlot object
+    @test sP.model == model
+    @test size(sP.inv_W) == (3, 3)
+
+    # Test sWeights function
+    weights = sWeights(pdfs,fractions,xs;support=support)
+    ws,wb,wl = eachcol(weights)
+    @test length(ws) == length(xs)
+    @test length(wb) == length(xs)
+    @test length(wl) == length(xs)
+    # sWeights should sum to about 1 for pure regions
+    @test ws[2] ≈ 1.0 atol = 0.1 # near pure signal
+    @test wb[3] ≈ 1.0 atol = 0.1 # near pure background
+    @test wl[5] ≈ 1.0 atol = 0.1 # near pure lineshape
+end
+
 @testset "sWeights_vector_with_variance" begin
     pdfS = Normal(0, 1)
     pdfB = Normal(5, 1.5)

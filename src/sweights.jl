@@ -1,12 +1,12 @@
 """
-    sPlot(model::MixtureModel)
+    sPlot(model::MixtureModel; support=nothing)
 
 Encapsulates the sPlot decomposition for a mixture model.
 
 # Fields
 - `model`: The `MixtureModel` (from Distributions.jl).
 - `inv_W`: The inverse sPlot weight matrix (covariance of yields).
-
+- 'support' : If nothing provided, get support from model components.
 # Example
 ```julia
 pdfS = Normal(0, 1)
@@ -19,11 +19,11 @@ struct sPlot{M, T}
     model::M
     inv_W::Matrix{T}
     #
-    function sPlot(model::MixtureModel)
+    function sPlot(model::MixtureModel; support=nothing)
         comps = model.components
         weights = model.prior.p
         f(x) = sum(weights[i] * pdf(comps[i], x) for i in eachindex(comps))
-        lims = (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps]))
+        lims = isnothing(support) ? (minimum([minimum(support(c)) for c in comps]), maximum([maximum(support(c)) for c in comps])) : support
         ϵ = 1e-12
         W = [quadgk(x -> pdf(ci, x) * pdf(cj, x) / max(f(x), ϵ), lims...)[1]
              for ci in comps, cj in comps]
@@ -98,10 +98,11 @@ function sWeights(
     pdfS::UnivariateDistribution,
     pdfB::UnivariateDistribution,
     fraction_signal::Real,
-    xs::AbstractVector,
+    xs::AbstractVector;
+    support=nothing
 )
     model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
-    sP = sPlot(model)
+    sP = sPlot(model;support=support)
     return sWeights(sP, xs)
 end
 
@@ -135,11 +136,47 @@ function sWeights(
     pdfB::UnivariateDistribution,
     n_signal::Real,
     n_background::Real,
-    xs::AbstractVector,
+    xs::AbstractVector;
+    support=nothing
 )
     N = n_signal + n_background
     f_signal = n_signal / N
-    return sWeights(pdfS, pdfB, f_signal, xs)
+    return sWeights(pdfS, pdfB, f_signal, xs;support=support)
+end
+
+"""
+    sWeights(pdfs::Vector{<:UnivariateDistribution},fractions::Vector{<:Real},xs::AbstractVector;support=nothing)
+
+Compute the sWeight functions for set of pdf components using the fitted fractions for each component
+
+# Arguments
+- `pdfs` : Vector of different models (as `UnivariateDistribution`). Its highly recommended to follow the template `[signal,background,lineshapes]`
+- `fractions` : Vector of fit fractions for each component (must be non-negative, all fractions must sum to 1). Pleasure ensure that `length(pdfs) == length(fractions)`
+
+# Returns
+- `weights` : Matrix of size (length(xs), n_components), where each column is the sWeights for a component
+
+# Example
+```julia
+pdfs = [Normal(0,1),Normal(3,1.5),Normal(5,0.001)]
+fractions = [0.4,0.55,0.05]
+support = (-10,10)
+x = vcat(rand(pdfa[1], 40), rand(pdfs[2], 55), rand(pdfs[3],5))
+wS, wB, wL = sWeights(pdfs, fractions, x) |> eachcol
+fS(x) = sWeights(sP, [x])[1,1]
+fB(x) = sWeights(sP, [x])[1,2]
+fL(x) = sWeights(sP, [x])[1,3]
+```
+"""
+function sWeights(
+    pdfs::Vector{<:UnivariateDistribution},
+    fractions::Vector{<:Real},
+    xs::AbstractVector;
+    support=nothing
+)
+    model = MixtureModel(pdfs,fractions)
+    sP = sPlot(model;support=support)
+    return sWeights(sP,xs)
 end
 
 """
@@ -210,9 +247,9 @@ pdfB = Normal(5, 1.5)
 cov = inv_W(pdfS, pdfB, 0.4)
 ```
 """
-function inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real)
+function inv_W(pdfS::UnivariateDistribution, pdfB::UnivariateDistribution, fraction_signal::Real;support=nothing)
     model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
-    sP = sPlot(model)
+    sP = sPlot(model;support=support)
     return inv_W(sP)
 end
 
@@ -314,8 +351,8 @@ xs = [-2.0, 0.0, 5.0, 8.0]
 ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
 ```
 """
-function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs)
+function sWeights_vector_with_variance(pdfS, pdfB, fraction_signal, xs;support=nothing)
     model = MixtureModel([pdfS, pdfB], [fraction_signal, 1 - fraction_signal])
-    sP = sPlot(model)
+    sP = sPlot(model;support=support)
     return sWeights_vector_with_variance(sP, xs)
 end
