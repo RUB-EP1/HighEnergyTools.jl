@@ -127,7 +127,7 @@ end
 
     # Create sPlot object
     model = MixtureModel([pdfS, pdfB], [f_signal, 1 - f_signal])
-    sP = sPlot(model)i
+    sP = sPlot(model)
 
     # Test sWeights function access
     fS(x) = sWeights(sP, [x])[1, 1]
