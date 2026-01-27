@@ -169,7 +169,7 @@ end
     @test wS_from_fraction == wS_from_yields
 
     #Test covariance matrix, calculated using pdfs and f_signal
-    cov = inv_W(pdfS,pdfB,f_signal,xs)
+    cov = inv_W(pdfS,pdfB,f_signal)
     @test size(cov) == (2,2)
     @test cov[1,1] > 0
 end
