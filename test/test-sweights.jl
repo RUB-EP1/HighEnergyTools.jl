@@ -151,13 +151,64 @@ end
     @test condW > 0
 end
 
+@testset "sWeights from functions" begin
+    pdfS = Normal(0, 1)
+    pdfB = Normal(5, 1.5)
+    nS, nB = 40, 60
+    xs = [-2.0, 0.0, 5.0, 8.0]
+    f_signal = nS / (nS+nB)
+
+    #Get sWeights from function taking fraction as input
+    wS_from_fraction,wB_from_fraction = sWeights(pdfS,pdfB,f_signal,xs) |> eachcol
+
+    #Get sWeights from function taking yields as input
+    wS_from_yields,wB_from_yields = sWeights(pdfS,pdfB,nS,nB,xs) |> eachcol
+
+    #Compare the two weight arrays
+    @test wS_from_fraction == wS_from_yields
+    @test wS_from_fraction == wS_from_yields
+
+    #Test covariance matrix, calculated using pdfs and f_signal
+    cov = inv_W(pdfS,pdfB,f_signal)
+    @test size(cov) == (2,2)
+    @test cov[1,1] > 0
+end
+
+@testset "sWeights from array of pdfs" begin
+    pdfs = [Normal(0,1),Normal(3,0.5),Normal(5,0.1)]
+    fractions = [0.4,0.55,0.05]
+    xs = [-2.0,0.0,3.0,-7.0,5.0,8.0]
+    support = (-10,10)
+
+    # Create sPlot object
+    model = MixtureModel(pdfs,fractions)
+    sP = sPlot(model;support=support)
+
+    # Test sPlot object
+    @test sP.model == model
+    @test size(sP.inv_W) == (3, 3)
+
+    # Test sWeights function
+    weights = sWeights(pdfs,fractions,xs;support=support)
+    ws,wb,wl = eachcol(weights)
+    @test length(ws) == length(xs)
+    @test length(wb) == length(xs)
+    @test length(wl) == length(xs)
+    # sWeights should sum to about 1 for pure regions
+    @test ws[2] ≈ 1.0 atol = 0.1 # near pure signal
+    @test wb[3] ≈ 1.0 atol = 0.1 # near pure background
+    @test wl[5] ≈ 1.0 atol = 0.1 # near pure lineshape
+end
+
 @testset "sWeights_vector_with_variance" begin
     pdfS = Normal(0, 1)
     pdfB = Normal(5, 1.5)
     xs = [-2.0, 0.0, 5.0, 8.0]
 
     # Test with individual distributions
-    ws, wb, vs, vb = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
+    W,V = sWeights_vector_with_variance(pdfS, pdfB, 0.4, xs)
+    (ws,wb) = W
+    (vs,vb) = V
     @test length(ws) == length(xs)
     @test length(vs) == length(xs)
     @test all(vs .>= 0)
@@ -169,7 +220,9 @@ end
     # Test with sPlot object
     model = MixtureModel([pdfS, pdfB], [0.4, 0.6])
     sP = sPlot(model)
-    ws2, wb2, vs2, vb2 = sWeights_vector_with_variance(sP, xs)
+    W2,V2 = sWeights_vector_with_variance(sP,xs)
+    (ws2,wb2) = W2
+    (vs2,vb2) = V2
     @test ws ≈ ws2 atol = 1e-10
     @test wb ≈ wb2 atol = 1e-10
     @test vs ≈ vs2 atol = 1e-10
@@ -180,8 +233,9 @@ end
     pdfS = Normal(0, 1)
     pdfB = Normal(5, 1.5)
     data = vcat(rand(pdfS, 40), rand(pdfB, 60))
-    result, sP, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
-
+    result, sP, nS, nB, cov, W, V = fit_and_sWeights(pdfS, pdfB, data)
+    (ws,wb) = W
+    (vs,vb) = V
     # Basic checks
     @test all(vs .>= 0)
     @test all(vb .>= 0)

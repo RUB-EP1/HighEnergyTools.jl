@@ -17,15 +17,15 @@ then compute sWeights and their variances for each event.
 - `sP`: The fitted sPlot object.
 - `n_signal`, `n_background`: Fitted yields.
 - `cov`: Covariance matrix of yields.
-- `ws`, `wb`: sWeights for signal and background (vectors).
-- `vs`, `vb`: Variances of sWeights (vectors).
+- `W`: sWeight vector with signal and background sWeights.
+- `V`: Variance vector with variance of sWeights.
 
 # Example
 ```julia
 pdfS = Normal(0, 1)
 pdfB = Normal(5, 1.5)
 data = vcat(rand(pdfS, 40), rand(pdfB, 60))
-result, sP, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
+result, sP, nS, nB, cov, W, V = fit_and_sWeights(pdfS, pdfB, data)
 # Use sP for further sWeight calculations:
 wS, wB = sWeights(sP, data) |> eachcol
 fS(x) = sWeights(sP, [x])[1,1]
@@ -62,8 +62,8 @@ function fit_and_sWeights(pdfS, pdfB, data; support = nothing, init_fsig = 0.5)
     cov = inv(hess)
 
     # Compute sWeights and variances using the sPlot object
-    ws, wb, vs, vb = sWeights_vector_with_variance(sP, data)
+    W, V = sWeights_vector_with_variance(sP, data)
 
-    return result, sP, nS, nB, cov, ws, wb, vs, vb
+    return result, sP, nS, nB, cov, W, V
 end
 
