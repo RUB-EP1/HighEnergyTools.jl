@@ -233,8 +233,9 @@ end
     pdfS = Normal(0, 1)
     pdfB = Normal(5, 1.5)
     data = vcat(rand(pdfS, 40), rand(pdfB, 60))
-    result, sP, nS, nB, cov, ws, wb, vs, vb = fit_and_sWeights(pdfS, pdfB, data)
-
+    result, sP, nS, nB, cov, W, V = fit_and_sWeights(pdfS, pdfB, data)
+    (ws,wb) = W
+    (vs,vb) = V
     # Basic checks
     @test all(vs .>= 0)
     @test all(vb .>= 0)
