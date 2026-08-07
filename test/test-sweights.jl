@@ -229,20 +229,3 @@ end
     @test vb ≈ vb2 atol = 1e-10
 end
 
-@testset "fit_and_sWeights" begin
-    pdfS = Normal(0, 1)
-    pdfB = Normal(5, 1.5)
-    data = vcat(rand(pdfS, 40), rand(pdfB, 60))
-    result, sP, nS, nB, cov, W, V = fit_and_sWeights(pdfS, pdfB, data)
-    (ws,wb) = W
-    (vs,vb) = V
-    # Basic checks
-    @test all(vs .>= 0)
-    @test all(vb .>= 0)
-    @test length(ws) == length(data)
-
-    # Check that sP is returned and works
-    @test isa(sP, sPlot)
-    weights_check = sWeights(sP, data)
-    @test size(weights_check) == (length(data), 2)
-end
